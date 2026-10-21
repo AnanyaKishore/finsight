@@ -1,0 +1,19 @@
+# The fixed universe of ~10 large-cap US equities analysed by FinSight.
+# Same universe as the MLOps_AI_App baseline (stock_data_config.py), so the
+# baseline's design and diagrams remain comparable.
+#
+#   symbol   : exchange ticker used by MarketStack / Finnhub / yfinance
+#   name     : display name shown in the UI and used by /api/search
+#   aliases  : extra search keywords for the type-ahead box (lower case)
+#   sector   : informational only (shown in the overview card)
+tickers:
+  - { symbol: AAPL,  name: Apple,          aliases: [apple, iphone],             sector: Technology }
+  - { symbol: MSFT,  name: Microsoft,      aliases: [microsoft, windows, azure], sector: Technology }
+  - { symbol: GOOGL, name: Alphabet,       aliases: [google, alphabet],          sector: Communication Services }
+  - { symbol: AMZN,  name: Amazon,         aliases: [amazon, aws],               sector: Consumer Discretionary }
+  - { symbol: TSLA,  name: Tesla,          aliases: [tesla],                     sector: Consumer Discretionary }
+  - { symbol: NVDA,  name: NVIDIA,         aliases: [nvidia],                    sector: Technology }
+  - { symbol: META,  name: Meta Platforms, aliases: [meta, facebook, instagram], sector: Communication Services }
+  - { symbol: JPM,   name: JPMorgan Chase, aliases: [jpmorgan, chase, jp morgan],sector: Financials }
+  - { symbol: WMT,   name: Walmart,        aliases: [walmart],                   sector: Consumer Staples }
+  - { symbol: V,     name: Visa,           aliases: [visa],                      sector: Financials }

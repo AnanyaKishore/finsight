@@ -1,0 +1,46 @@
+# FinSight — Design Decisions Log
+
+A running log of choices that differ from (or sharpen) the submitted proposal,
+and of baseline-repo behaviour we deliberately do **not** copy. Each entry has
+the rationale you can defend in the viva. New entries are appended per day.
+
+---
+
+## Part A — Changes to the proposal (and why)
+
+| # | Proposal said | We do | Why |
+|---|---|---|---|
+| D-01 | Backfill **6 months** of prices | Backfill **12 months** (`ingestion.price_backfill_days: 365`) | A 100-day lookback + 14-day horizon on ~125 trading days leaves only ~12 training windows per ticker. 12 months (the MarketStack free-plan maximum) gives ~137 windows per ticker for the **same quota cost** (1 request per ticker). Lookback and horizon stay exactly as proposed. |
+| D-02 | MarketStack, "runs daily incrementally" | MarketStack stays primary; **quota ledger + yfinance fallback** | Free plan = 100 requests/month and *every ticker counts as one request*. 10 tickers × ~21 trading days = 210 > 100. The ledger refuses calls that would exceed `budget − reserve`; the run then degrades gracefully to yfinance and every bar records its `source` (lineage). |
+| D-03 | "News from a news source" | **Finnhub** company news | The baseline's NewsAPI free tier only returns the last ~30 days, so a 6-month backfill is impossible. Finnhub's free tier returns ~1 year of company news at 60 calls/min. |
+| D-04 | DVC remote (your assignments used **S3**) | **Local DVC remote** (a directory outside the repo); MinIO optional | Guidelines §III: "Cloud Platforms: Not Allowed"; the proposal also promises "no cloud platforms are used". A local remote is the option shown in the DVC lecture. If you want to keep the S3 *workflow*, a self-hosted MinIO container is S3-compatible and is not a cloud platform. |
+| D-05 | "Scheduled ingestion container", "the scheduler" | **APScheduler**-based Python service (Day 7), not Airflow | The baseline's Airflow stack (Postgres + Redis + Celery workers + webserver) needs ~2–3 GB RAM; on an 8 GB laptop it would not fit next to Spark, MLflow, DistilBERT and Grafana. Airflow is not in the guidelines' stack; DVC is the mandated pipeline/CI tool. |
+| D-06 | Ray (in guidelines' stack) | **Not used**; Spark (local mode) is the data-engineering engine | The rubric asks for "Ray **or** Spark **or** Kubernetes". Spark in `local[4]` mode with a 1 GB driver fits the 8 GB budget; a Ray cluster would compete for the same memory without adding a capability we need. |
+| D-07 | LSTM "predicts the next 14 days" | **Direct multi-output** LSTM (one forward pass → 14 values), one **global** model across tickers, **per-window** MinMax scaling | Recursive 1-step forecasting (baseline) compounds its own errors over 14 steps. Per-window scaling (fit on the 100-day input only) removes look-ahead leakage and lets one model learn from all 10 tickers (10× data). |
+| D-08 | Registry "Staging and Production" | Classic **stages** *and* **aliases** (`@staging`, `@production`) | Newer MLflow versions recommend aliases and are deprecating stages (Lecture 3, §4.3). We set both: aliases are what the serving containers load; stages keep the UI view the proposal describes. |
+| D-09 | Portfolio Sharpe "against an equal-weight baseline" | Compare on a **walk-forward** (out-of-sample) window | Equal weight (0.1 each) is itself a grid point, so the in-sample optimum can never lose to it — that comparison would be meaningless. We optimise on window *t−60…t−30* and evaluate on *t−30…t*. |
+| D-10 | Python version unspecified (q4demo used 3.14) | **Python 3.11** everywhere (mamba env, Docker, MLproject) | PySpark, PyTorch-CPU and MLflow all ship stable 3.11 wheels; one version everywhere is what "environment parity" means. |
+
+## Part B — Baseline behaviour we deliberately do NOT copy
+
+Found while reviewing `MLOps_AI_App` and `MLops_AiApp_rnn_model_tracking`:
+
+1. **`/api/prediction/{ticker}` returns synthetic numbers.** `Web App/app.py` builds the forecast from a seeded random slope plus noise; the stored LSTM predictions are ignored. FinSight serves real model output (or clearly labelled last-known output when degraded).
+2. **API keys committed in source** (`stock_data_config.py`, `stock_data_dag.py`). FinSight keeps secrets only in a git-ignored `.env` (encrypted copy on Day 9).
+3. **Scaler fit on the whole series** in training (leaks future min/max into the past). Fixed by per-window scaling (D-07).
+4. **Inference reads the *oldest* 100 days**: `find(...).sort("date", 1).limit(100)`. FinSight always takes the most recent window.
+5. **Validation split yields no windows**: 30 validation days with a 100-day sequence length produces zero validation sequences.
+6. **Frontend served by the Flask backend** (`render_template`), i.e. not loosely coupled. FinSight's frontend is a separate container that calls the backend only through a configurable REST base URL (rubric: "strictly follow loose coupling").
+7. **Duplicate inserts** in historical backfill (`insert_many` without a unique key). FinSight uses unique indexes and upserts everywhere.
+8. **Monitoring stack commented out** in the root compose file, and only infrastructure metrics (node/Mongo). FinSight instruments the application, pipeline and model quality.
+
+## Part C — Day-by-day decisions
+
+### Day 1 (21 Oct)
+- **One ingestion code path.** `incremental` gap-fills from each ticker's last stored date and falls back to the backfill window when a ticker has no data, so missed days self-heal.
+- **Skip tickers that are already current** using a NYSE trading calendar (`latest_expected_session`), because an empty MarketStack response still costs quota.
+- **Empty provider response = failure** when the range must contain a trading session (yfinance returns an empty frame instead of raising when Yahoo is unreachable — found during testing).
+- **Retry policy:** exponential backoff with full jitter; only network errors, 429 and 5xx are retried; quota errors are never retried.
+- **Idempotency:** unique indexes `(ticker, date)` and `(ticker, news_id)` + bulk upserts.
+- **Structured JSON logs** with a `run_id` on every line of a run, to be surfaced in the pipeline console.
+- **Bug found by the integration tests (real MongoDB):** upserts stamped `updated_at: now` in `$set`, so an identical re-upsert was counted as a revision (`modified_count` 2 instead of 1). mongomock did not expose it. Fixed by keeping only data fields in `$set` (`ingested_at` remains as first-seen lineage); the unit test now asserts `updated == 0` on an identical rerun. This is the case for keeping both unit tests (fast, mocked) and integration tests (real services) in the test plan.

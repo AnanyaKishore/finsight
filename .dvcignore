@@ -1,0 +1,5 @@
+# Paths DVC should never scan when computing workspace status.
+logs/
+.git/
+.venv/
+notebooks/.ipynb_checkpoints/

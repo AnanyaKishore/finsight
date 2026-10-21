@@ -1,0 +1,36 @@
+# --------------------------------------------------------------------------- #
+# params.yaml -- single source of truth for every tunable value.
+# DVC tracks these keys as stage dependencies ("params:" in dvc.yaml), so a
+# change here invalidates exactly the stages that use it, and every MLflow run
+# logs the values it was produced with.
+# Sections are added day by day; Day 1 defines ingestion only.
+# --------------------------------------------------------------------------- #
+
+ingestion:
+  # Price history to backfill on first run. The proposal said 6 months, but a
+  # 100-day lookback + 14-day horizon leaves only ~12 training windows per
+  # ticker on ~125 trading days. 365 days (the MarketStack free-plan maximum)
+  # gives ~137 windows per ticker at the SAME quota cost (1 call per ticker).
+  price_backfill_days: 365
+  # News history to backfill (Finnhub free tier keeps ~1 year).
+  news_backfill_days: 182
+  # Finnhub is queried in windows of this many days so no window hits the
+  # per-response article cap.
+  news_window_days: 7
+  # Upper bound on stored articles per ticker per window, so CPU-only DistilBERT
+  # scoring stays bounded (~10 tickers x 26 weeks x 40 = ~10k articles max).
+  max_articles_per_window: 40
+  # MarketStack free plan = 100 requests/month and EVERY ticker in a call counts
+  # as one request. The guard refuses calls that would cross (budget - reserve)
+  # and the ingestion falls back to the secondary provider instead.
+  marketstack_monthly_budget: 100
+  marketstack_reserve: 5
+  # Secondary price source used only when MarketStack is unavailable / over quota.
+  price_fallback_provider: yfinance   # one of: yfinance, none
+  # Minimum seconds between Finnhub calls (free tier: 60 calls/minute).
+  finnhub_min_interval_s: 1.1
+  # HTTP retry policy (exponential backoff with full jitter).
+  http_max_retries: 4
+  http_backoff_base_s: 1.0
+  http_backoff_max_s: 30.0
+  http_timeout_s: 20

@@ -1,0 +1,53 @@
+# ---- Secrets (never commit) -------------------------------------------------
+.env
+*.key
+secrets/*.key
+secrets/.env
+
+# ---- DVC-managed outputs (tracked through dvc.lock / .dvc files instead) ----
+/data/*
+!/data/.gitkeep
+/models/*
+!/models/.gitkeep
+
+# reports/ holds DVC metrics JSON that IS committed (small, human-readable);
+# only bulky or transient report files are ignored.
+/reports/*.html
+/reports/tmp/
+
+# ---- MLflow local stores ----------------------------------------------------
+mlruns/
+mlartifacts/
+mlflow.db
+
+# ---- Logs -------------------------------------------------------------------
+/logs/*
+!/logs/.gitkeep
+*.log
+
+# ---- Python -----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# ---- Spark ------------------------------------------------------------------
+spark-warehouse/
+metastore_db/
+derby.log
+
+# ---- OS / editors -----------------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -1,0 +1,43 @@
+# --------------------------------------------------------------------------- #
+# FinSight "pipeline" image: ingestion jobs today; Spark ETL, training and the
+# scheduler are added to this same image on later days so that the code that
+# runs in CI (dvc repro) and in production runs in ONE identical environment.
+#
+# Multi-stage build (Module 3, Handout 1): wheels are built in a fat "builder"
+# stage, only the installed packages are copied into the slim runtime stage.
+# --------------------------------------------------------------------------- #
+
+# ---------- Stage 1: builder ----------
+FROM python:3.11-slim AS builder
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends build-essential \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /build
+# Dependencies first: this layer is cached until requirements change.
+COPY requirements/ requirements/
+RUN python -m venv /opt/venv \
+ && /opt/venv/bin/pip install --upgrade pip \
+ && /opt/venv/bin/pip install -r requirements/pipeline.txt
+
+# ---------- Stage 2: runtime ----------
+FROM python:3.11-slim AS runtime
+LABEL org.opencontainers.image.title="finsight-pipeline" \
+      org.opencontainers.image.description="FinSight ingestion / ETL / training jobs"
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app/src \
+    FINSIGHT_ROOT=/app
+COPY --from=builder /opt/venv /opt/venv
+WORKDIR /app
+# Application code last: changes here do not invalidate the dependency layer.
+COPY src/ src/
+COPY configs/ configs/
+COPY params.yaml params.yaml
+# Run as an unprivileged user (security best practice).
+RUN useradd --create-home --uid 1000 finsight \
+ && mkdir -p /app/logs && chown -R finsight:finsight /app
+USER finsight
+ENTRYPOINT ["python", "-m", "finsight.ingestion.cli"]
+CMD ["--help"]

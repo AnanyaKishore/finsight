@@ -1,0 +1,7 @@
+# Dependencies for the "pipeline" image: ingestion, scheduler, Spark ETL, training.
+# Day 1 only needs the ingestion part; later days append (pyspark, torch-cpu, mlflow, ...).
+-r base.txt
+pandas==3.0.6
+numpy==2.4.6
+# Fallback price provider used only when the MarketStack free quota is exhausted.
+yfinance==1.7.0
