@@ -3,7 +3,7 @@
 # Load .env (if present) so targets can use the same variables as compose.
 -include .env
 export
-.PHONY: help install lint format test test-int up down mongo-shell ingest-plan backfill incremental status build repro dag eda benchmark
+.PHONY: help install lint format test test-int up down mongo-shell ingest-plan backfill incremental status build repro dag eda benchmark train plots mlflow-ui
 
 help:            ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*## "}{printf "  %-14s %s\n",$$1,$$2}'
@@ -58,3 +58,12 @@ eda:             ## (re)build and execute the EDA notebook, writing figures to r
 
 benchmark:       ## Spark ETL throughput at 1x/10x/50x data volume -> reports/etl_benchmark.json
 	python -m finsight.etl.benchmark --factors 1 10 50
+
+train:           ## (re)train + evaluate the LSTM through DVC (only if inputs changed)
+	dvc repro evaluate_lstm
+
+plots:           ## render DVC plots (learning curve, MAPE by horizon) -> dvc_plots/index.html
+	dvc plots show
+
+mlflow-ui:       ## start the MLflow server (UI at http://localhost:5000)
+	docker compose up -d mlflow

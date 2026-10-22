@@ -5,8 +5,8 @@
       "2026-10-22"
     ],
     "path": "data/raw/news.parquet",
-    "rows": 10756,
-    "sha256": "7eeab3729f79555662ef4d26fea10da74c84eb29d10d54b358df20ff559b11a0",
+    "rows": 10868,
+    "sha256": "90c0723b25cbfc5dd0a9e9ebb8fd58a7309bc0da1cee2c07d66326112816dfc2",
     "tickers": 10
   },
   "prices": {
@@ -20,7 +20,7 @@
       "marketstack": 2489,
       "yfinance": 3
     },
-    "sha256": "9200f049c246163a1b7dfd148af0121160ec753ac216ca12909d64546cd0117e",
+    "sha256": "89b571099da257244ca87e5c74440a675d559693fa73dbdac3ebb613d0e241c1",
     "tickers": 10
   }
 }

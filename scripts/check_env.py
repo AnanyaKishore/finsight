@@ -35,7 +35,17 @@ def report(ok: bool | None, label: str, detail: str = "") -> None:
 def main() -> int:
     report(sys.version_info[:2] == (3, 11), "Python 3.11", sys.version.split()[0])
 
-    for module in ("requests", "pymongo", "yaml", "dotenv", "pandas", "yfinance", "pyspark"):
+    for module in (
+        "requests",
+        "pymongo",
+        "yaml",
+        "dotenv",
+        "pandas",
+        "yfinance",
+        "pyspark",
+        "torch",
+        "mlflow",
+    ):
         try:
             __import__(module)
             report(True, f"import {module}")
@@ -82,6 +92,33 @@ def main() -> int:
         report(isinstance(payload, list), "Finnhub key", f"{len(payload)} recent AAPL articles")
     except (ConfigError, FinSightError) as exc:
         report(False, "Finnhub key", str(exc))
+
+    try:
+        import os
+
+        import requests
+
+        uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+        requests.get(f"{uri}/health", timeout=3).raise_for_status()
+        report(True, "MLflow tracking server", uri)
+    except Exception as exc:  # noqa: BLE001
+        report(
+            False,
+            "MLflow tracking server",
+            f"{exc.__class__.__name__}: docker compose up -d mlflow",
+        )
+    try:
+        import torch
+
+        cuda = torch.version.cuda
+        report(
+            cuda is None,
+            "PyTorch CPU build",
+            f"{torch.__version__}"
+            + ("" if cuda is None else " (CUDA build: works, but ~2 GB larger than needed)"),
+        )
+    except ImportError:
+        pass
 
     try:
         settings.require("marketstack_api_key")

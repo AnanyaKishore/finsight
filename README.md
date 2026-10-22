@@ -24,12 +24,14 @@ finsight/
 ├── docker-compose.yml          # one-command deployment
 ├── docker/Dockerfile.pipeline  # ingestion / ETL / training / scheduler image
 ├── dvc.yaml                    # CI pipeline DAG (dvc repro)
+├── MLproject                   # MLflow Project entry points (conda_env: environment.yml)
 ├── src/finsight/
 │   ├── common/                 # config, JSON logging, retry, HTTP, Mongo, calendar, run records
 │   ├── ingestion/              # providers, quota ledger, repository, service, CLI
 │   ├── ci/                     # unit-test gate stage
 │   ├── data/                   # export (Mongo -> Parquet) and validate (expectation suite)
-│   └── etl/                    # Spark ETL stage + throughput benchmark
+│   ├── etl/                    # Spark ETL stage + throughput benchmark
+│   └── models/                 # MLflow tracking/lineage; lstm/ (data, network, metrics, pyfunc, train, evaluate)
 ├── tests/{unit,integration}/   # pytest suites
 ├── notebooks/01_eda.ipynb      # exploratory data analysis (built by scripts/build_eda_notebook.py)
 ├── scripts/                    # preflight check, notebook builder
@@ -157,6 +159,36 @@ git add -A && git commit -m "feat(day2): ..." && dvc push && git push
 | `process` | `python -m finsight.etl.process` | raw snapshot | `data/processed/**`, `reports/etl_metrics.json` | Spark error |
 
 Each stage also writes a run record (`pipeline_runs`, `pipeline: "dvc"`) for the Pipeline Console.
+
+---
+
+## Day 3 runbook — LSTM forecasting + MLflow tracking
+
+```
+… process ──► train_lstm ──► evaluate_lstm
+              grid search      packaged model on untouched
+              (child runs),    test windows vs naive/drift
+              refit, package
+```
+
+```bash
+pip install -r requirements/dev.txt          # adds CPU-only torch + mlflow (pyarrow -> 25.0.1)
+printf '\nMLFLOW_TRACKING_URI=http://localhost:5000\nMLFLOW_DISABLE_AGENT_HINT=1\n' >> .env   # once
+docker compose up -d --build mlflow          # tracking server + registry at http://localhost:5000
+python scripts/check_env.py                  # torch (CPU build), mlflow, server reachable
+dvc repro                                    # unit tests ... train_lstm, evaluate_lstm (~3-5 min)
+dvc metrics show                             # lstm_train.json (validation), lstm_metrics.json (test)
+dvc plots show                               # dvc_plots/index.html: learning curve, MAPE by horizon
+mlflow run . -e train_lstm --env-manager local --experiment-name finsight-lstm   # MLproject entry point
+```
+
+| Stage | Reads | Writes | MLflow |
+|---|---|---|---|
+| `train_lstm` | `data/processed/prices`, `params.yaml: lstm` | `models/lstm/` (pyfunc model + `run.json`), `reports/lstm_train.json`, learning curve CSV | parent run + 8 child runs (one per configuration), lineage tags, model with signature |
+| `evaluate_lstm` | `models/lstm/`, processed prices | `reports/lstm_metrics.json`, MAPE-by-horizon CSV, forecast PNG | `test_*` metrics, `beats_naive` tag, full per-ticker JSON |
+
+**Reproduce any result**: `git checkout <commit> && dvc checkout && dvc repro -f train_lstm evaluate_lstm`;
+the MLflow run for that commit is in `reports/lstm_train.json` (`run_id`).
 
 ---
 

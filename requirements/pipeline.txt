@@ -4,9 +4,12 @@
 # pandas stays on 2.x: PySpark 4.2 warns that pandas >= 3.0 is not fully supported.
 pandas==2.3.3
 numpy==2.4.6
-pyarrow==26.0.0
+# pyarrow < 26 is required by mlflow 3.17.
+pyarrow==25.0.1
 # Fallback price provider used only when the MarketStack free quota is exhausted.
 yfinance==1.7.0
 # Day 2: distributed ETL (local mode; needs Java 17+, provided by openjdk in
 # environment.yml locally and by openjdk-17-jre-headless in the Docker image).
 pyspark==4.2.0
+# Day 3: LSTM training + MLflow tracking (CPU-only torch).
+-r ml.txt

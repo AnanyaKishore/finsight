@@ -1,0 +1,29 @@
+# MLflow Project: run any FinSight training step in a pinned environment.
+#
+#   mlflow run . -e train_lstm --env-manager local --experiment-name finsight-lstm
+#       uses the current (already identical) conda env -- fast, for daily work
+#   mlflow run . -e train_lstm --env-manager conda --experiment-name finsight-lstm
+#       builds a fresh env from environment.yml -- the dev/test parity proof
+#
+# The environment is the SAME environment.yml the developer uses (which pins
+# requirements/*.txt), so dev, test and the Docker images resolve identical
+# package versions.
+name: finsight
+
+conda_env: environment.yml
+
+entry_points:
+  train_lstm:
+    # Named *_override because MLflow params are immutable: the training code
+    # logs the resolved `seed` / `max_epochs` itself, so the entry-point params
+    # must not use the same names.
+    parameters:
+      seed_override: {type: int, default: -1}        # -1 = lstm.seed from params.yaml
+      max_epochs_override: {type: int, default: -1}  # -1 = lstm.max_epochs from params.yaml
+    command: "python -m finsight.models.lstm.train --seed {seed_override} --max-epochs {max_epochs_override}"
+
+  evaluate_lstm:
+    command: "python -m finsight.models.lstm.evaluate"
+
+  pipeline:
+    command: "dvc repro"

@@ -1,0 +1,21 @@
+{
+  "run_id": "30dcf042471b457f8017e5e0e0094863",
+  "test_windows": 150,
+  "model": {
+    "rmse": 17.835,
+    "mape": 2.8781,
+    "directional_accuracy": 0.5341
+  },
+  "naive": {
+    "rmse": 18.1174,
+    "mape": 2.8665
+  },
+  "drift": {
+    "rmse": 18.5971,
+    "mape": 3.0636,
+    "directional_accuracy": 0.4788
+  },
+  "up_share": 0.5876,
+  "skill_vs_naive": -0.0041,
+  "beats_naive": false
+}

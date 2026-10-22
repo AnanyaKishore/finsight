@@ -1,12 +1,12 @@
 {
   "inputs": {
-    "news_rows": 10756,
+    "news_rows": 10868,
     "price_rows": 2492,
     "replicate": 1
   },
   "outputs": {
     "files": 21,
-    "news_rows": 10600,
+    "news_rows": 10712,
     "news_weekly_rows": 265,
     "price_rows": 2520,
     "tickers": 10
@@ -24,49 +24,49 @@
     "driver_memory": "1g",
     "master": "local[4]",
     "shuffle_partitions": 8,
-    "startup_seconds": 3.0,
+    "startup_seconds": 3.143,
     "version": "4.2.0"
   },
   "steps": [
     {
-      "rows_in": 13248,
-      "rows_out": 13248,
-      "rows_per_s": 5547.7,
-      "seconds": 2.388,
+      "rows_in": 13360,
+      "rows_out": 13360,
+      "rows_per_s": 4961.0,
+      "seconds": 2.693,
       "step": "read_snapshot"
     },
     {
       "rows_in": 2492,
       "rows_out": 2520,
-      "rows_per_s": 797.7,
-      "seconds": 3.124,
+      "rows_per_s": 725.3,
+      "seconds": 3.436,
       "step": "align_calendar"
     },
     {
       "rows_in": 2520,
       "rows_out": 2520,
-      "rows_per_s": 2633.2,
-      "seconds": 0.957,
+      "rows_per_s": 2548.0,
+      "seconds": 0.989,
       "step": "engineer_features"
     },
     {
-      "rows_in": 10756,
-      "rows_out": 10865,
-      "rows_per_s": 4506.1,
-      "seconds": 2.387,
+      "rows_in": 10868,
+      "rows_out": 10977,
+      "rows_per_s": 3501.3,
+      "seconds": 3.104,
       "step": "clean_aggregate_news"
     },
     {
-      "rows_in": 13385,
-      "rows_out": 13385,
-      "rows_per_s": 11459.8,
-      "seconds": 1.168,
+      "rows_in": 13497,
+      "rows_out": 13497,
+      "rows_per_s": 7099.9,
+      "seconds": 1.901,
       "step": "write_parquet"
     }
   ],
   "totals": {
-    "processing_seconds": 10.024,
-    "rows_in": 13248,
-    "rows_per_s": 1321.6
+    "processing_seconds": 12.123,
+    "rows_in": 13360,
+    "rows_per_s": 1102.0
   }
 }

@@ -1,7 +1,7 @@
 # =========================================================================== #
 # FinSight CI pipeline (DVC DAG).  Run:  dvc repro      Visualise:  dvc dag
 #
-#   unit_tests ──► export ──► validate ──► process ──► (Day 3: train_lstm ...)
+#   unit_tests ──► export ──► validate ──► process ──► train_lstm ──► evaluate_lstm
 #
 # * unit_tests is the CI gate: if the suite fails, nothing downstream runs.
 # * export is always re-run (it reads the live MongoDB) but writes
@@ -71,3 +71,51 @@ stages:
     metrics:
       - reports/etl_metrics.json:
           cache: false
+
+  train_lstm:
+    cmd: python -m finsight.models.lstm.train
+    deps:
+      - data/processed/prices
+      - src/finsight/models
+    params:
+      - lstm
+    outs:
+      - models/lstm               # packaged pyfunc model + run.json (MLflow run ID)
+      - reports/plots/lstm_learning_curve.csv:   # plotted below (top-level `plots`)
+          cache: false
+    metrics:
+      - reports/lstm_train.json:  # selection result on the validation windows
+          cache: false
+
+  evaluate_lstm:
+    cmd: python -m finsight.models.lstm.evaluate
+    deps:
+      - models/lstm
+      - data/processed/prices
+      - src/finsight/models/lstm/evaluate.py
+      - src/finsight/models/lstm/metrics.py
+    params:
+      - lstm.lookback
+      - lstm.horizon
+      - lstm.val_origins
+      - lstm.test_origins
+    metrics:
+      - reports/lstm_metrics.json:  # held-out test: model vs naive vs drift
+          cache: false
+    outs:
+      - reports/plots/lstm_test_forecasts.png:
+          cache: false
+      - reports/plots/lstm_horizon_mape.csv:
+          cache: false
+
+# `dvc plots show` renders these into dvc_plots/index.html
+plots:
+  - LSTM learning curve (selected configuration):
+      x: epoch
+      y:
+        reports/plots/lstm_learning_curve.csv: [train_loss, val_loss]
+  - Test MAPE by forecast horizon (lower is better):
+      x: horizon
+      y:
+        reports/plots/lstm_horizon_mape.csv: [model_mape, naive_mape, drift_mape]
+  - reports/plots/lstm_test_forecasts.png

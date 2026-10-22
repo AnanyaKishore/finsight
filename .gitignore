@@ -51,3 +51,8 @@ derby.log
 Thumbs.db
 .idea/
 .vscode/
+
+# ---- DVC plot renders (regenerate with `dvc plots show`) ----
+dvc_plots/
+
+images/

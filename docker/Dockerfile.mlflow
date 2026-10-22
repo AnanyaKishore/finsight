@@ -1,0 +1,32 @@
+# --------------------------------------------------------------------------- #
+# MLflow tracking server + model registry (self-hosted, no cloud).
+#   backend store : SQLite file in the `mlflow_data` volume (runs, params,
+#                   metrics, registry)
+#   artifact store: directory in the same volume, *served* over HTTP
+#                   (--serve-artifacts), so clients on the host and in other
+#                   containers upload/download artifacts through the server
+#                   and never need a shared filesystem.
+# Same MLflow version as requirements/ml.txt (client/server parity).
+# --------------------------------------------------------------------------- #
+FROM python:3.11-slim-bookworm
+# MLFLOW_SERVER_ENABLE_JOB_EXECUTION=false: MLflow 3 otherwise starts a job
+# runner + 7 huey worker processes (~1.2 GB) for GenAI evaluation / trace
+# jobs we do not use. Measured: 1.7 GB -> ~0.5 GB (8 GB laptop budget).
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 PYTHONUNBUFFERED=1 \
+    MLFLOW_DISABLE_AGENT_HINT=1 \
+    MLFLOW_SERVER_ENABLE_JOB_EXECUTION=false
+RUN pip install mlflow==3.17.2 \
+ && useradd --create-home --uid 1000 mlflow \
+ && mkdir -p /mlflow && chown mlflow:mlflow /mlflow
+USER mlflow
+WORKDIR /mlflow
+EXPOSE 5000
+# --allowed-hosts: MLflow 3 rejects unknown Host headers (DNS-rebinding
+# protection); we allow the host machine and the compose service name.
+CMD ["mlflow", "server", \
+     "--backend-store-uri", "sqlite:////mlflow/mlflow.db", \
+     "--artifacts-destination", "/mlflow/artifacts", \
+     "--serve-artifacts", \
+     "--host", "0.0.0.0", "--port", "5000", \
+     "--workers", "1", \
+     "--allowed-hosts", "localhost:*,127.0.0.1:*,mlflow:*"]

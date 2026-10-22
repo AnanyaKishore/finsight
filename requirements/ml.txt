@@ -1,0 +1,7 @@
+# Model training / tracking / serving dependencies (Day 3+).
+# CPU-only PyTorch: the extra index serves `torch==2.14.1+cpu`, which pip prefers
+# over the PyPI build (that one bundles ~2+ GB of CUDA libraries we never use;
+# the laptop has no GPU).
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.14.1
+mlflow==3.17.2

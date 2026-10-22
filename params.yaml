@@ -81,3 +81,31 @@ etl:
   processed_news_path: data/processed/news
   news_weekly_path: data/processed/news_weekly
   metrics_path: reports/etl_metrics.json
+
+# --------------------------------------------------------------------------- #
+# Day 3: price forecasting (LSTM)
+# --------------------------------------------------------------------------- #
+lstm:
+  lookback: 100            # input window, trading days (proposal)
+  horizon: 14              # forecast steps, trading days (proposal)
+  # Chronological split per ticker, counted in forecast origins (windows).
+  # A purge gap of `horizon` origins separates train/val and val/test, so no
+  # training *target* overlaps a validation/test target (look-ahead leakage).
+  val_origins: 15
+  test_origins: 15
+  # Hyper-parameter grid (2 x 2 x 2 = 8 configurations, CPU-friendly).
+  grid:
+    hidden_size: [32, 64]
+    num_layers: [1, 2]
+    learning_rate: [0.001, 0.003]
+  dropout: 0.1             # applied between stacked LSTM layers only
+  batch_size: 64
+  max_epochs: 60
+  patience: 8              # early stopping on validation loss
+  seed: 42
+  torch_threads: 6         # of 12 cores: leave headroom for Docker services
+  selection_metric: val_mape
+  experiment_name: finsight-lstm
+  model_dir: models/lstm
+  train_report: reports/lstm_train.json
+  metrics_report: reports/lstm_metrics.json

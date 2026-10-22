@@ -305,7 +305,7 @@
     {
       "details": null,
       "name": "news.summary_present_fraction",
-      "observed": 0.9902,
+      "observed": 0.9903,
       "severity": "info",
       "success": true
     }
@@ -320,7 +320,7 @@
         "2026-06-10"
       ],
       "missing_trading_days": 2,
-      "news_articles": 1079,
+      "news_articles": 1080,
       "news_thin_weeks": 0,
       "news_weeks": 27,
       "outlier_days": 1,
@@ -343,7 +343,7 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1081,
+      "news_articles": 1090,
       "news_thin_weeks": 0,
       "news_weeks": 26,
       "outlier_days": 1,
@@ -366,7 +366,7 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1081,
+      "news_articles": 1089,
       "news_thin_weeks": 0,
       "news_weeks": 26,
       "outlier_days": 0,
@@ -389,7 +389,7 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1075,
+      "news_articles": 1077,
       "news_thin_weeks": 0,
       "news_weeks": 27,
       "outlier_days": 0,
@@ -411,7 +411,7 @@
         "2026-06-10"
       ],
       "missing_trading_days": 2,
-      "news_articles": 1081,
+      "news_articles": 1106,
       "news_thin_weeks": 0,
       "news_weeks": 26,
       "outlier_days": 1,
@@ -435,7 +435,7 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1082,
+      "news_articles": 1087,
       "news_thin_weeks": 0,
       "news_weeks": 26,
       "outlier_days": 2,
@@ -458,7 +458,7 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1087,
+      "news_articles": 1125,
       "news_thin_weeks": 0,
       "news_weeks": 26,
       "outlier_days": 0,
@@ -481,7 +481,7 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1083,
+      "news_articles": 1107,
       "news_thin_weeks": 0,
       "news_weeks": 27,
       "outlier_days": 0,

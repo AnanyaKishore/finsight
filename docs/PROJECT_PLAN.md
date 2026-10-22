@@ -37,14 +37,14 @@ Deviations from the proposal and their rationale: `docs/DESIGN_DECISIONS.md`.
 | Service | Limit | Notes |
 |---|---|---|
 | mongo | 512 MB | WiredTiger cache capped at 0.25 GB |
-| mlflow (tracking + registry) | 384 MB | SQLite backend + local artifact dir |
+| mlflow (tracking + registry) | 768 MB | SQLite backend + served artifacts; ~510 MB measured with background jobs disabled |
 | lstm-serve | 512 MB | CPU PyTorch, tiny model |
 | sentiment-serve | 1.2 GB | DistilBERT (~260 MB weights) + torch |
 | backend (FastAPI) | 256 MB | |
 | frontend (nginx) | 64 MB | static files |
 | scheduler (+ Spark/training jobs when running) | 2 GB peak | Spark `local[4]`, driver 1 GB |
 | prometheus / alertmanager / grafana / exporters | ~600 MB total | |
-| **Total** | **≈ 5.7 GB peak, ≈ 3.5 GB idle** | Give Docker 6 GB (see README). |
+| **Total** | **≈ 6.1 GB peak, ≈ 3.9 GB idle** | Give Docker 6 GB (see README). |
 
 ---
 

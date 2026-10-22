@@ -1,10 +1,11 @@
 # =========================================================================== #
 # FinSight -- Docker Compose stack.
 #
-# Grows day by day. Day 1 contains only:
+# Grows day by day. Current services:
 #   mongo      self-hosted MongoDB (prices, news, run records, API quota ledger)
+#   mlflow     MLflow tracking server + model registry      (Day 3)
 #   ingestion  one-shot job container (MarketStack prices + Finnhub news)
-# Later days add: mlflow, lstm-serve, sentiment-serve, backend, frontend,
+# Later days add: lstm-serve, sentiment-serve, backend, frontend,
 # scheduler, prometheus, alertmanager, grafana, node-exporter, mongodb-exporter.
 #
 # Memory budget (8 GB laptop): every service gets an explicit mem_limit so the
@@ -46,6 +47,30 @@ services:
     mem_limit: 512m
     networks: [finsight]
 
+  mlflow:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mlflow
+    image: finsight/mlflow:${FINSIGHT_VERSION:-dev}
+    container_name: finsight-mlflow
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5000:5000"     # UI + REST API at http://localhost:5000 (host only)
+    volumes:
+      - mlflow_data:/mlflow       # runs (SQLite) + artifacts survive restarts
+    environment:
+      TZ: ${TZ:-Asia/Kolkata}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    # Measured: ~510 MB steady, 514 MB peak while a training run uploads its
+    # model (launcher + one uvicorn worker, background jobs disabled).
+    mem_limit: 768m
+    networks: [finsight]
+
   ingestion:
     build:
       context: .
@@ -77,6 +102,7 @@ services:
 
 volumes:
   mongo_data:
+  mlflow_data:
 
 networks:
   finsight:

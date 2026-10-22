@@ -1,7 +1,6 @@
 # Local dev environment (same pattern as q4demo/environment.yml).
 #   mamba env create -f environment.yml
 #   mamba activate finsight
-#   pip install -e .
 # Python is pinned to 3.11 because PySpark, PyTorch (CPU) and MLflow all ship
 # stable wheels for it; the Docker images use python:3.11-slim for parity.
 name: finsight
@@ -14,3 +13,4 @@ dependencies:
   - openjdk=17        # needed by PySpark from Day 2
   - pip:
       - -r requirements/dev.txt
+      - -e .            # the finsight package itself (needed by `mlflow run --env-manager conda`)
