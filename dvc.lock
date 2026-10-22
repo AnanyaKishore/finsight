@@ -1,0 +1,156 @@
+schema: '2.0'
+stages:
+  unit_tests:
+    cmd: python -m finsight.ci.run_unit_tests
+    deps:
+    - path: pyproject.toml
+      hash: md5
+      md5: 75da8436c4ebcc92dc54d1b8b05314be
+      size: 1941
+    - path: src
+      hash: md5
+      md5: 599c57a6a8c32f64f5c3ad0ec7ad824d.dir
+      size: 145644
+      nfiles: 30
+    - path: tests/conftest.py
+      hash: md5
+      md5: f9a426e4a9c39a05d09118c062762654
+      size: 4644
+    - path: tests/factories.py
+      hash: md5
+      md5: 40f731a7734b6933c18d39b497f992ec
+      size: 3296
+    - path: tests/unit
+      hash: md5
+      md5: 2a1484cf2bef1e493f6702056aa08239.dir
+      size: 47890
+      nfiles: 11
+    outs:
+    - path: reports/unit_tests.json
+      hash: md5
+      md5: f6dcff7f8f4c0229504f62f1665410b5
+      size: 98
+  export:
+    cmd: python -m finsight.data.export
+    deps:
+    - path: configs/tickers.yaml
+      hash: md5
+      md5: a8c91fbc17a66832214e2d7018f1f844
+      size: 1561
+    - path: reports/unit_tests.json
+      hash: md5
+      md5: f6dcff7f8f4c0229504f62f1665410b5
+      size: 98
+    - path: src/finsight/data/export.py
+      hash: md5
+      md5: 60ad188473bb5e11fdb37b1f7522d972
+      size: 7511
+    params:
+      params.yaml:
+        export:
+          prices_path: data/raw/prices.parquet
+          news_path: data/raw/news.parquet
+          manifest_path: reports/export_manifest.json
+    outs:
+    - path: data/raw/news.parquet
+      hash: md5
+      md5: 02b7c6f0f883e0300e66cba34d122f7d
+      size: 4541582
+    - path: data/raw/prices.parquet
+      hash: md5
+      md5: cb45ecece6c41d6e54dfbb59dd6e9a44
+      size: 100122
+    - path: reports/export_manifest.json
+      hash: md5
+      md5: 52eb27f71ae7e636e118b66b028388ea
+      size: 563
+  validate:
+    cmd: python -m finsight.data.validate
+    deps:
+    - path: data/raw/news.parquet
+      hash: md5
+      md5: 02b7c6f0f883e0300e66cba34d122f7d
+      size: 4541582
+    - path: data/raw/prices.parquet
+      hash: md5
+      md5: cb45ecece6c41d6e54dfbb59dd6e9a44
+      size: 100122
+    - path: src/finsight/common/timeutils.py
+      hash: md5
+      md5: a65a7646bd7b9f4196acd1b401c5fa09
+      size: 2382
+    - path: src/finsight/data/validate.py
+      hash: md5
+      md5: a9fae4a4d2ef71d162cb8ec92b8c7344
+      size: 17994
+    params:
+      params.yaml:
+        validation:
+          report_path: reports/data_quality.json
+          min_history_rows: 114
+          max_missing_days_warn: 3
+          max_missing_days_error: 10
+          max_staleness_days: 3
+          return_outlier_z: 6.0
+          max_abs_log_return: 0.5
+          min_articles_per_week: 5
+    outs:
+    - path: reports/data_quality.json
+      hash: md5
+      md5: b54d025aeed63b96b7b829aa7e5bff2c
+      size: 11329
+  process:
+    cmd: python -m finsight.etl.process
+    deps:
+    - path: data/raw/news.parquet
+      hash: md5
+      md5: 02b7c6f0f883e0300e66cba34d122f7d
+      size: 4541582
+    - path: data/raw/prices.parquet
+      hash: md5
+      md5: cb45ecece6c41d6e54dfbb59dd6e9a44
+      size: 100122
+    - path: reports/data_quality.json
+      hash: md5
+      md5: b54d025aeed63b96b7b829aa7e5bff2c
+      size: 11329
+    - path: src/finsight/etl
+      hash: md5
+      md5: 6e5dee3f48c4c05fe145ce07dfa3520c.dir
+      size: 23441
+      nfiles: 4
+    params:
+      params.yaml:
+        etl:
+          spark_master: local[4]
+          driver_memory: 1g
+          shuffle_partitions: 8
+          spark_ui: false
+          max_ffill_days: 2
+          feature_windows:
+          - 5
+          - 20
+          processed_prices_path: data/processed/prices
+          processed_news_path: data/processed/news
+          news_weekly_path: data/processed/news_weekly
+          metrics_path: reports/etl_metrics.json
+    outs:
+    - path: data/processed/news
+      hash: md5
+      md5: 58d6d13b2ffd40b19364ada9916e7543.dir
+      size: 4736132
+      nfiles: 10
+    - path: data/processed/news_weekly
+      hash: md5
+      md5: 73cdc82b2f4673af038b3079f5ccf32f.dir
+      size: 6976
+      nfiles: 1
+    - path: data/processed/prices
+      hash: md5
+      md5: 752b0a7c4bdbf01020280229337e5614.dir
+      size: 365242
+      nfiles: 10
+    - path: reports/etl_metrics.json
+      hash: md5
+      md5: 1c06a3faa8ded6f11fca366e2c8de200
+      size: 1418

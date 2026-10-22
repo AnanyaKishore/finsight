@@ -67,6 +67,28 @@ class IngestionRepository:
         doc = self.db[PRICES].find_one({"ticker": ticker}, sort=[("date", DESCENDING)])
         return _aware(doc["date"]) if doc else None
 
+    def invalid_prices(self) -> list[dict[str, Any]]:
+        """Stored bars that break the boundary rules of ``make_price_bar``.
+
+        These pre-date the sanitiser (or came from a provider revision) and
+        are what the ``repair`` command fixes: close <= 0, adj_close <= 0 or
+        negative volume.
+        """
+        query = {
+            "$or": [
+                {"close": {"$lte": 0}},
+                {"close": None},
+                {"adj_close": {"$lte": 0}},
+                {"volume": {"$lt": 0}},
+            ]
+        }
+        cursor = self.db[PRICES].find(query, {"_id": 0}).sort([("ticker", 1), ("date", 1)])
+        return [{**doc, "date": _aware(doc["date"])} for doc in cursor]
+
+    def delete_price(self, ticker: str, day: datetime) -> int:
+        """Remove one bar (the ETL then treats the day as a gap)."""
+        return self.db[PRICES].delete_one({"ticker": ticker, "date": day}).deleted_count
+
     # -------------------------------------------------------------------- news
     def upsert_news(self, articles: Iterable[NewsArticle]) -> UpsertResult:
         """Insert unseen articles; never overwrite sentiment written later (Day 4)."""

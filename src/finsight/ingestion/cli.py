@@ -7,6 +7,7 @@ Examples::
     python -m finsight.ingestion.cli incremental           # daily gap-fill (scheduler)
     python -m finsight.ingestion.cli incremental --tickers AAPL MSFT --news-only
     python -m finsight.ingestion.cli status                # coverage, quota, last runs
+    python -m finsight.ingestion.cli repair --dry-run      # list impossible stored bars
     python -m finsight.ingestion.cli quota --set-used 12   # sync with provider dashboard
 
 Exit codes (consumed by the scheduler on Day 7):
@@ -107,6 +108,11 @@ def _parser() -> argparse.ArgumentParser:
         p.add_argument(
             "--dry-run", action="store_true", help="print the plan and API cost; make no calls"
         )
+    repair = sub.add_parser(
+        "repair",
+        help="re-fetch stored bars with impossible values (e.g. close = 0) from the fallback",
+    )
+    repair.add_argument("--dry-run", action="store_true", help="list bad bars; change nothing")
     sub.add_parser("status", help="coverage per ticker, quota usage and recent runs")
     quota = sub.add_parser("quota", help="show or correct the MarketStack request ledger")
     quota.add_argument("--set-used", type=int, help="overwrite this month's used-call counter")
@@ -206,6 +212,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         service = build_service(settings, db)
         if args.command == "status":
             return _cmd_status(service)
+        if args.command == "repair":
+            summary = service.repair(dry_run=args.dry_run)
+            print(json.dumps(summary, indent=2, default=str))
+            return EXIT_OK
         if args.command == "quota":
             if args.set_used is not None:
                 service.ledger.set_used(args.set_used)

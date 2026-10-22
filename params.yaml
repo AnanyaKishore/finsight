@@ -34,3 +34,50 @@ ingestion:
   http_backoff_base_s: 1.0
   http_backoff_max_s: 30.0
   http_timeout_s: 20
+
+# --------------------------------------------------------------------------- #
+# Day 2: data engineering
+# --------------------------------------------------------------------------- #
+export:
+  # Snapshot of MongoDB written by the `export` DVC stage (always re-run; DVC
+  # skips everything downstream when the snapshot's content hash is unchanged).
+  prices_path: data/raw/prices.parquet
+  news_path: data/raw/news.parquet
+  manifest_path: reports/export_manifest.json
+
+validation:
+  # Expectation suite applied by the `validate` stage. Severity "error" stops
+  # the DVC pipeline (non-zero exit); "warn" is reported but does not block.
+  report_path: reports/data_quality.json
+  # LSTM needs lookback (100) + horizon (14) observed days per ticker.
+  min_history_rows: 114
+  # Trading days (NYSE calendar) absent from a ticker's history.
+  max_missing_days_warn: 3
+  max_missing_days_error: 10
+  # How many trading days the newest bar may lag the latest expected session.
+  max_staleness_days: 3
+  # Robust z-score (median/MAD) of daily log returns above which a day is
+  # flagged as an outlier (warn): real market moves happen, so never blocking.
+  return_outlier_z: 6.0
+  # A |daily log return| above this is almost certainly bad data for large
+  # caps (e.g. an unadjusted stock split) and blocks the pipeline.
+  max_abs_log_return: 0.5
+  # News: weeks with fewer articles than this are reported per ticker.
+  min_articles_per_week: 5
+
+etl:
+  # PySpark in local mode: 4 cores + 1 GB driver fits the 8 GB laptop budget
+  # alongside MongoDB and the other services (see PROJECT_PLAN memory budget).
+  spark_master: local[4]
+  driver_memory: 1g
+  shuffle_partitions: 8          # Spark default of 200 is far too many here
+  spark_ui: false                # set true to inspect the DAG at localhost:4040
+  # Calendar alignment: forward-fill at most this many consecutive missing
+  # trading days per ticker; longer gaps are left out (and reported).
+  max_ffill_days: 2
+  # Rolling windows (trading days) for engineered features.
+  feature_windows: [5, 20]
+  processed_prices_path: data/processed/prices
+  processed_news_path: data/processed/news
+  news_weekly_path: data/processed/news_weekly
+  metrics_path: reports/etl_metrics.json

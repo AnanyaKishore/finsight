@@ -43,6 +43,10 @@ convention = "google"
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "D", "S105", "S106", "S311", "E731"]
 "scripts/**" = ["D", "S603", "S607", "E402"]
+# Notebook cells are embedded as strings; their line length follows notebook style.
+"scripts/build_eda_notebook.py" = ["D", "E501"]
+# `from pyspark.sql import functions as F` is the universal PySpark convention.
+"src/finsight/etl/**" = ["N812"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

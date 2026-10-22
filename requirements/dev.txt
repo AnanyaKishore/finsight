@@ -8,3 +8,6 @@ responses==0.26.3
 ruff==0.17.1
 black==26.10.1
 pre-commit==4.7.0
+# Day 2: exploratory data analysis notebook
+jupyterlab==4.6.4
+matplotlib==3.11.2

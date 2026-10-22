@@ -1,5 +1,12 @@
-# Paths DVC should never scan when computing workspace status.
+# Paths DVC should never scan when hashing stage dependencies. Without these,
+# bytecode caches inside src/ and tests/ would make the unit_tests stage look
+# "changed" on every run.
 logs/
 .git/
 .venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
 notebooks/.ipynb_checkpoints/

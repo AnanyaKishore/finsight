@@ -12,6 +12,7 @@ all self-hosted with Docker Compose.
 |---|---|
 | [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) | 11-day plan, rubric map, memory budget, risks |
 | [`docs/DESIGN_DECISIONS.md`](docs/DESIGN_DECISIONS.md) | Every deviation from the proposal / baseline, with rationale |
+| [`docs/DATA_CARD.md`](docs/DATA_CARD.md) | Data sources, formats, lineage, biases, EDA findings |
 | `docs/ARCHITECTURE.md`, `HLD.md`, `LLD.md`, `TEST_PLAN.md`, `USER_MANUAL.md` | Added Days 5–10 |
 
 ## Repository layout (grows day by day)
@@ -22,11 +23,16 @@ finsight/
 ├── params.yaml                 # every tunable value (DVC-tracked params)
 ├── docker-compose.yml          # one-command deployment
 ├── docker/Dockerfile.pipeline  # ingestion / ETL / training / scheduler image
+├── dvc.yaml                    # CI pipeline DAG (dvc repro)
 ├── src/finsight/
-│   ├── common/                 # config, JSON logging, retry, HTTP, Mongo, calendar
-│   └── ingestion/              # providers, quota ledger, repository, service, CLI
+│   ├── common/                 # config, JSON logging, retry, HTTP, Mongo, calendar, run records
+│   ├── ingestion/              # providers, quota ledger, repository, service, CLI
+│   ├── ci/                     # unit-test gate stage
+│   ├── data/                   # export (Mongo -> Parquet) and validate (expectation suite)
+│   └── etl/                    # Spark ETL stage + throughput benchmark
 ├── tests/{unit,integration}/   # pytest suites
-├── scripts/check_env.py        # environment preflight
+├── notebooks/01_eda.ipynb      # exploratory data analysis (built by scripts/build_eda_notebook.py)
+├── scripts/                    # preflight check, notebook builder
 ├── docs/                       # plan, decisions, design docs
 ├── data/ models/               # DVC-managed (not in Git)
 └── reports/                    # small JSON metrics committed to Git
@@ -118,6 +124,39 @@ git push -u origin main && git tag day1 && git push --tags
 ```
 
 `make help` lists shortcuts for all of the above (Linux/macOS/WSL).
+
+---
+
+## Day 2 runbook — data engineering pipeline (DVC + Spark)
+
+```
+unit_tests ──► export ──► validate ──► process (Spark)
+ CI gate      Mongo →     expectation    calendar alignment, features,
+              Parquet     suite (gate)   news cleaning → data/processed/
+```
+
+```bash
+docker compose up -d mongo                    # MongoDB must be running for `export`
+pip install -r requirements/dev.txt           # adds pyspark, pyarrow, jupyterlab, matplotlib
+python scripts/check_env.py                   # now also checks Java 17+ and pyspark
+python -m finsight.ingestion.cli incremental  # top up to the latest session
+dvc repro                                     # run the whole pipeline (~1-2 min)
+dvc dag                                       # show the DAG
+dvc metrics show                              # unit-test counts + ETL throughput
+dvc repro                                     # again: validate/process are SKIPPED (unchanged data)
+make eda                                      # EDA notebook -> reports/figures/*.png
+make benchmark                                # Spark throughput at 1x/10x/50x
+git add -A && git commit -m "feat(day2): ..." && dvc push && git push
+```
+
+| Stage | Command | Reads | Writes | Fails when |
+|---|---|---|---|---|
+| `unit_tests` | `python -m finsight.ci.run_unit_tests` | `src/`, `tests/` | `reports/unit_tests.json` | any unit test fails |
+| `export` | `python -m finsight.data.export` | MongoDB | `data/raw/*.parquet`, `reports/export_manifest.json` | Mongo unreachable / empty |
+| `validate` | `python -m finsight.data.validate` | raw snapshot | `reports/data_quality.json` | a blocking expectation fails |
+| `process` | `python -m finsight.etl.process` | raw snapshot | `data/processed/**`, `reports/etl_metrics.json` | Spark error |
+
+Each stage also writes a run record (`pipeline_runs`, `pipeline: "dvc"`) for the Pipeline Console.
 
 ---
 

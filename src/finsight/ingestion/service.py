@@ -22,7 +22,7 @@ import json
 import time
 import uuid
 from collections.abc import Callable, Sequence
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -393,6 +393,91 @@ class IngestionService:
         report.news["inserted"] += result.inserted
         report.news["updated"] += result.updated
         return True, False
+
+    # ------------------------------------------------------------------ repair
+    def repair(self, dry_run: bool = False) -> dict[str, Any]:
+        """Replace stored bars that break the price rules (e.g. a close of 0).
+
+        For each invalid bar, the *fallback* provider (unmetered) is asked for
+        that single day. A valid bar replaces the stored one with its raw
+        ``close`` and ``adj_close = None``, so the ticker's model price falls
+        back to raw closes. Mixing two providers' adjustment factors in one
+        series would add artificial jumps (see DATA_CARD B6). If no valid bar
+        comes back, the stored bar is deleted and the ETL forward-fills the
+        one-day gap.
+
+        Args:
+            dry_run: Only report what would change.
+
+        Returns:
+            A summary with one action per bad bar, also stored as an
+            ``ingestion`` run record with ``mode = "repair"``.
+        """
+        bad = self.repo.invalid_prices()
+        actions: list[dict[str, Any]] = []
+        run_id = uuid.uuid4().hex[:12]
+        started_at, started = self.clock(), time.monotonic()
+        with bind_run_id(run_id):
+            for doc in bad:
+                day = doc["date"].date()
+                entry = {
+                    "ticker": doc["ticker"],
+                    "date": day.isoformat(),
+                    "stored": {k: doc.get(k) for k in ("close", "adj_close", "volume", "source")},
+                }
+                if dry_run:
+                    actions.append({**entry, "action": "would_repair"})
+                    continue
+                replacement = None
+                if self.fallback is not None:
+                    try:
+                        bars = self.fallback.fetch_eod(doc["ticker"], day, day)
+                        replacement = next((b for b in bars if b.date.date() == day), None)
+                    except ProviderError as exc:
+                        entry["fallback_error"] = str(exc)
+                if replacement is not None:
+                    fixed = replace(replacement, adj_close=None)
+                    self.repo.upsert_prices([fixed])
+                    actions.append(
+                        {
+                            **entry,
+                            "action": "replaced",
+                            "new_close": fixed.close,
+                            "new_source": fixed.source,
+                        }
+                    )
+                else:
+                    self.repo.delete_price(doc["ticker"], doc["date"])
+                    actions.append({**entry, "action": "deleted"})
+                log.info("price bar repaired", extra=actions[-1])
+            summary = {
+                "run_id": run_id,
+                "dry_run": dry_run,
+                "invalid_bars": len(bad),
+                "replaced": sum(a["action"] == "replaced" for a in actions),
+                "deleted": sum(a["action"] == "deleted" for a in actions),
+                "actions": actions,
+            }
+            if not dry_run:
+                self.repo.start_run(
+                    {
+                        "run_id": run_id,
+                        "pipeline": "ingestion",
+                        "mode": "repair",
+                        "started_at": started_at,
+                        "planned_calls": len(bad),
+                    }
+                )
+                self.repo.finish_run(
+                    run_id,
+                    {
+                        "status": "success",
+                        "finished_at": self.clock(),
+                        "duration_s": round(time.monotonic() - started, 3),
+                        "repair": {k: v for k, v in summary.items() if k != "run_id"},
+                    },
+                )
+        return summary
 
     # ----------------------------------------------------------------- helpers
     @staticmethod

@@ -8,7 +8,7 @@
 # --------------------------------------------------------------------------- #
 
 # ---------- Stage 1: builder ----------
-FROM python:3.11-slim AS builder
+FROM python:3.11-slim-bookworm AS builder
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 RUN apt-get update \
  && apt-get install -y --no-install-recommends build-essential \
@@ -21,7 +21,8 @@ RUN python -m venv /opt/venv \
  && /opt/venv/bin/pip install -r requirements/pipeline.txt
 
 # ---------- Stage 2: runtime ----------
-FROM python:3.11-slim AS runtime
+# bookworm is pinned because it ships openjdk-17 (Spark 4 needs Java 17+).
+FROM python:3.11-slim-bookworm AS runtime
 LABEL org.opencontainers.image.title="finsight-pipeline" \
       org.opencontainers.image.description="FinSight ingestion / ETL / training jobs"
 ENV PATH="/opt/venv/bin:$PATH" \
@@ -29,6 +30,11 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app/src \
     FINSIGHT_ROOT=/app
+# Java runtime for PySpark (headless JRE only); procps provides `ps`, which
+# Spark's launcher scripts call.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends openjdk-17-jre-headless procps \
+ && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /opt/venv /opt/venv
 WORKDIR /app
 # Application code last: changes here do not invalidate the dependency layer.

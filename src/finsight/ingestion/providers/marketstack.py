@@ -21,7 +21,7 @@ from finsight.common.exceptions import ProviderError, QuotaExceededError
 from finsight.common.http import HttpClient
 from finsight.common.logging import get_logger
 from finsight.common.timeutils import to_utc_midnight
-from finsight.ingestion.models import PriceBar
+from finsight.ingestion.models import PriceBar, make_price_bar
 from finsight.ingestion.providers.base import PriceProvider
 
 log = get_logger(__name__)
@@ -59,33 +59,24 @@ def classify_marketstack(status: int, body: Any) -> None:
     # generic HTTP-status rules (429/5xx retryable).
 
 
-def _to_float(value: Any) -> float | None:
-    try:
-        return None if value is None else float(value)
-    except (TypeError, ValueError):
-        return None
-
-
 def parse_eod_row(row: dict[str, Any], ticker: str) -> PriceBar | None:
-    """Convert one API row to a :class:`PriceBar`; return ``None`` if unusable."""
+    """Convert one API row to a :class:`PriceBar`; ``None`` if unusable (incl. close <= 0)."""
     raw_date = row.get("date")
-    close = _to_float(row.get("close"))
-    if not raw_date or close is None:
+    if not raw_date:
         return None
     try:
         day = date.fromisoformat(str(raw_date)[:10])
     except ValueError:
         return None
-    open_, high, low = (_to_float(row.get(k)) for k in ("open", "high", "low"))
-    return PriceBar(
-        ticker=ticker,
-        date=to_utc_midnight(day),
-        open=open_ if open_ is not None else close,
-        high=high if high is not None else close,
-        low=low if low is not None else close,
-        close=close,
-        volume=_to_float(row.get("volume")) or 0.0,
-        adj_close=_to_float(row.get("adj_close")),
+    return make_price_bar(
+        ticker,
+        to_utc_midnight(day),
+        open_=row.get("open"),
+        high=row.get("high"),
+        low=row.get("low"),
+        close=row.get("close"),
+        volume=row.get("volume"),
+        adj_close=row.get("adj_close"),
         source="marketstack",
     )
 

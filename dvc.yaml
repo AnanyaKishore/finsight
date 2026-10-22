@@ -1,0 +1,73 @@
+# =========================================================================== #
+# FinSight CI pipeline (DVC DAG).  Run:  dvc repro      Visualise:  dvc dag
+#
+#   unit_tests ──► export ──► validate ──► process ──► (Day 3: train_lstm ...)
+#
+# * unit_tests is the CI gate: if the suite fails, nothing downstream runs.
+# * export is always re-run (it reads the live MongoDB) but writes
+#   byte-identical files when the data has not changed, so DVC skips the rest.
+# * validate exits non-zero on any blocking data-quality failure.
+# * Outputs under data/ are cached by DVC (dvc push -> local remote);
+#   small JSON reports are committed to Git (cache: false). The compact ones
+#   (unit_tests, etl_metrics) are DVC metrics: `dvc metrics show`.
+# Stages grow day by day: train/evaluate (Day 3), sentiment + portfolio
+# (Day 4), register (Day 5).
+# =========================================================================== #
+
+stages:
+  unit_tests:
+    cmd: python -m finsight.ci.run_unit_tests
+    deps:
+      - src
+      - tests/unit
+      - tests/conftest.py
+      - tests/factories.py
+      - pyproject.toml
+    metrics:
+      - reports/unit_tests.json:
+          cache: false
+
+  export:
+    cmd: python -m finsight.data.export
+    always_changed: true          # reads MongoDB, which DVC cannot hash
+    deps:
+      - reports/unit_tests.json   # gate: only runs after the tests pass
+      - src/finsight/data/export.py
+      - configs/tickers.yaml
+    params:
+      - export
+    outs:
+      - data/raw/prices.parquet
+      - data/raw/news.parquet
+      - reports/export_manifest.json:
+          cache: false
+
+  validate:
+    cmd: python -m finsight.data.validate
+    deps:
+      - data/raw/prices.parquet
+      - data/raw/news.parquet
+      - src/finsight/data/validate.py
+      - src/finsight/common/timeutils.py
+    params:
+      - validation
+    outs:
+      - reports/data_quality.json:   # detailed, per-ticker report (Git-tracked)
+          cache: false
+
+  process:
+    cmd: python -m finsight.etl.process
+    deps:
+      - data/raw/prices.parquet
+      - data/raw/news.parquet
+      - reports/data_quality.json  # gate: only runs on validated data
+      - src/finsight/etl
+    params:
+      - etl
+    outs:
+      - data/processed/prices
+      - data/processed/news
+      - data/processed/news_weekly
+    metrics:
+      - reports/etl_metrics.json:
+          cache: false

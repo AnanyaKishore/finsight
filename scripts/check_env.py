@@ -35,7 +35,7 @@ def report(ok: bool | None, label: str, detail: str = "") -> None:
 def main() -> int:
     report(sys.version_info[:2] == (3, 11), "Python 3.11", sys.version.split()[0])
 
-    for module in ("requests", "pymongo", "yaml", "dotenv", "pandas", "yfinance"):
+    for module in ("requests", "pymongo", "yaml", "dotenv", "pandas", "yfinance", "pyspark"):
         try:
             __import__(module)
             report(True, f"import {module}")
@@ -88,6 +88,17 @@ def main() -> int:
         report(True, "MarketStack key present", "not called here (every call costs quota)")
     except ConfigError as exc:
         report(None, "MarketStack key", f"{exc}; prices will use the yfinance fallback")
+
+    java = shutil.which("java")
+    if java:
+        version = subprocess.run(
+            ["java", "-version"], capture_output=True, text=True, check=False
+        ).stderr
+        line = next((ln for ln in version.splitlines() if "version" in ln), version.strip()[:60])
+        major = line.split('"')[1].split(".")[0] if '"' in line else "?"
+        report(major.isdigit() and int(major) >= 17, "Java 17+ (for Spark)", line.strip())
+    else:
+        report(False, "Java 17+ (for Spark)", "not on PATH: mamba install -n finsight openjdk=17")
 
     for tool in ("git", "git-lfs", "dvc", "docker"):
         report(shutil.which(tool) is not None, f"{tool} on PATH")

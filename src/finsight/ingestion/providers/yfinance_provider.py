@@ -18,7 +18,7 @@ from typing import Any
 from finsight.common.exceptions import ProviderError
 from finsight.common.logging import get_logger
 from finsight.common.timeutils import to_utc_midnight
-from finsight.ingestion.models import PriceBar
+from finsight.ingestion.models import PriceBar, make_price_bar
 from finsight.ingestion.providers.base import PriceProvider
 
 log = get_logger(__name__)
@@ -72,25 +72,18 @@ class YFinanceProvider(PriceProvider):
             return []
         bars: list[PriceBar] = []
         for index, row in frame.iterrows():
-            try:
-                close = float(row["Close"])
-            except (KeyError, TypeError, ValueError):
-                continue
-            if close != close:  # NaN check without numpy
-                continue
             day = index.date() if hasattr(index, "date") else date.fromisoformat(str(index)[:10])
-            adj = row.get("Adj Close")
-            bars.append(
-                PriceBar(
-                    ticker=ticker,
-                    date=to_utc_midnight(day),
-                    open=float(row.get("Open", close)),
-                    high=float(row.get("High", close)),
-                    low=float(row.get("Low", close)),
-                    close=close,
-                    volume=float(row.get("Volume", 0) or 0),
-                    adj_close=None if adj is None or adj != adj else float(adj),
-                    source=self.name,
-                )
+            bar = make_price_bar(
+                ticker,
+                to_utc_midnight(day),
+                open_=row.get("Open"),
+                high=row.get("High"),
+                low=row.get("Low"),
+                close=row.get("Close"),
+                volume=row.get("Volume"),
+                adj_close=row.get("Adj Close"),
+                source=self.name,
             )
+            if bar is not None:
+                bars.append(bar)
         return bars

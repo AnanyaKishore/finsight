@@ -1,0 +1,52 @@
+{
+  "spark": {
+    "master": "local[4]",
+    "driver_memory": "1g",
+    "shuffle_partitions": 8,
+    "startup_seconds": 3.01
+  },
+  "results": [
+    {
+      "factor": 1,
+      "rows_in": 13248,
+      "processing_seconds": 3.194,
+      "rows_per_s": 4147.8,
+      "tickers": 10,
+      "steps": {
+        "read_snapshot": 0.305,
+        "align_calendar": 0.833,
+        "engineer_features": 0.405,
+        "clean_aggregate_news": 0.933,
+        "write_parquet": 0.718
+      }
+    },
+    {
+      "factor": 10,
+      "rows_in": 132480,
+      "processing_seconds": 10.203,
+      "rows_per_s": 12984.4,
+      "tickers": 100,
+      "steps": {
+        "read_snapshot": 1.538,
+        "align_calendar": 1.773,
+        "engineer_features": 1.017,
+        "clean_aggregate_news": 3.109,
+        "write_parquet": 2.766
+      }
+    },
+    {
+      "factor": 50,
+      "rows_in": 662400,
+      "processing_seconds": 26.5,
+      "rows_per_s": 24996.2,
+      "tickers": 500,
+      "steps": {
+        "read_snapshot": 2.153,
+        "align_calendar": 1.392,
+        "engineer_features": 1.256,
+        "clean_aggregate_news": 12.244,
+        "write_parquet": 9.455
+      }
+    }
+  ]
+}

@@ -7,9 +7,67 @@ field names (loose coupling; swapping a provider touches one module).
 
 from __future__ import annotations
 
+import math
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any
+
+
+def _number(value: Any) -> float | None:
+    """Float, or ``None`` for missing / non-numeric / NaN / infinite values."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
+
+
+def make_price_bar(
+    ticker: str,
+    day: datetime,
+    *,
+    open_: Any,
+    high: Any,
+    low: Any,
+    close: Any,
+    volume: Any,
+    adj_close: Any,
+    source: str,
+) -> PriceBar | None:
+    """Build a :class:`PriceBar` from raw provider values, or reject it.
+
+    Free data feeds occasionally return ``0`` (or nothing) instead of a price.
+    A zero close turns into an infinite log return and corrupts every model
+    window that contains it, so these rules are applied at the system boundary:
+
+    * close missing or <= 0       -> bar rejected (the day becomes a gap, which the
+      ETL forward-fills if short, or the fallback provider fills on ``repair``)
+    * adj_close missing or <= 0   -> ``None`` (the ticker's model price then uses
+      raw ``close``; see ``finsight.data.validate.model_price``)
+    * open/high/low missing or <= 0 -> replaced by close
+    * volume missing or < 0       -> 0
+    """
+    close_v = _number(close)
+    if close_v is None or close_v <= 0:
+        return None
+
+    def _positive_or_close(value: Any) -> float:
+        number = _number(value)
+        return number if number is not None and number > 0 else close_v
+
+    adj = _number(adj_close)
+    vol = _number(volume)
+    return PriceBar(
+        ticker=ticker,
+        date=day,
+        open=_positive_or_close(open_),
+        high=_positive_or_close(high),
+        low=_positive_or_close(low),
+        close=close_v,
+        volume=vol if vol is not None and vol >= 0 else 0.0,
+        adj_close=adj if adj is not None and adj > 0 else None,
+        source=source,
+    )
 
 
 @dataclass(frozen=True)

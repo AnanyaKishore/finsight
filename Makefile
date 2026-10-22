@@ -3,7 +3,7 @@
 # Load .env (if present) so targets can use the same variables as compose.
 -include .env
 export
-.PHONY: help install lint format test test-int up down mongo-shell ingest-plan backfill incremental status build
+.PHONY: help install lint format test test-int up down mongo-shell ingest-plan backfill incremental status build repro dag eda benchmark
 
 help:            ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*## "}{printf "  %-14s %s\n",$$1,$$2}'
@@ -46,3 +46,15 @@ incremental:     ## gap-fill since the last stored date (what the daily job runs
 
 status:          ## row counts, date coverage, API quota usage, last runs
 	python -m finsight.ingestion.cli status
+
+repro:           ## run the DVC pipeline (tests -> export -> validate -> Spark ETL)
+	dvc repro
+
+dag:             ## show the pipeline DAG and current metrics
+	dvc dag && dvc metrics show
+
+eda:             ## (re)build and execute the EDA notebook, writing figures to reports/figures
+	python scripts/build_eda_notebook.py && jupyter nbconvert --to notebook --execute notebooks/01_eda.ipynb --inplace
+
+benchmark:       ## Spark ETL throughput at 1x/10x/50x data volume -> reports/etl_benchmark.json
+	python -m finsight.etl.benchmark --factors 1 10 50

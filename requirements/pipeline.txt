@@ -1,7 +1,12 @@
 # Dependencies for the "pipeline" image: ingestion, scheduler, Spark ETL, training.
-# Day 1 only needs the ingestion part; later days append (pyspark, torch-cpu, mlflow, ...).
+# Later days append (torch-cpu, mlflow, ...).
 -r base.txt
-pandas==3.0.6
+# pandas stays on 2.x: PySpark 4.2 warns that pandas >= 3.0 is not fully supported.
+pandas==2.3.3
 numpy==2.4.6
+pyarrow==26.0.0
 # Fallback price provider used only when the MarketStack free quota is exhausted.
 yfinance==1.7.0
+# Day 2: distributed ETL (local mode; needs Java 17+, provided by openjdk in
+# environment.yml locally and by openjdk-17-jre-headless in the Docker image).
+pyspark==4.2.0

@@ -1,0 +1,72 @@
+{
+  "inputs": {
+    "news_rows": 10756,
+    "price_rows": 2492,
+    "replicate": 1
+  },
+  "outputs": {
+    "files": 21,
+    "news_rows": 10600,
+    "news_weekly_rows": 265,
+    "price_rows": 2520,
+    "tickers": 10
+  },
+  "quality": {
+    "news_removed": {
+      "blank_headlines": 0,
+      "duplicate_headlines": 156,
+      "duplicate_ids": 0
+    },
+    "price_rows_dropped": 0,
+    "price_rows_forward_filled": 28
+  },
+  "spark": {
+    "driver_memory": "1g",
+    "master": "local[4]",
+    "shuffle_partitions": 8,
+    "startup_seconds": 3.0,
+    "version": "4.2.0"
+  },
+  "steps": [
+    {
+      "rows_in": 13248,
+      "rows_out": 13248,
+      "rows_per_s": 5547.7,
+      "seconds": 2.388,
+      "step": "read_snapshot"
+    },
+    {
+      "rows_in": 2492,
+      "rows_out": 2520,
+      "rows_per_s": 797.7,
+      "seconds": 3.124,
+      "step": "align_calendar"
+    },
+    {
+      "rows_in": 2520,
+      "rows_out": 2520,
+      "rows_per_s": 2633.2,
+      "seconds": 0.957,
+      "step": "engineer_features"
+    },
+    {
+      "rows_in": 10756,
+      "rows_out": 10865,
+      "rows_per_s": 4506.1,
+      "seconds": 2.387,
+      "step": "clean_aggregate_news"
+    },
+    {
+      "rows_in": 13385,
+      "rows_out": 13385,
+      "rows_per_s": 11459.8,
+      "seconds": 1.168,
+      "step": "write_parquet"
+    }
+  ],
+  "totals": {
+    "processing_seconds": 10.024,
+    "rows_in": 13248,
+    "rows_per_s": 1321.6
+  }
+}
