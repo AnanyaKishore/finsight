@@ -20,11 +20,13 @@ MLflow run ID" requirement.
 
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import platform
 import subprocess
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -116,25 +118,46 @@ def dvc_output_md5(root: Path, stage: str, path: str) -> str | None:
     return None
 
 
-def lineage_tags(root: Path, processed_prices: str, seed: int) -> dict[str, str]:
-    """All reproducibility tags for a training run."""
+def lineage_tags(
+    root: Path,
+    processed_prices: str | None,
+    seed: int,
+    *,
+    dvc_inputs: Mapping[str, tuple[str, str]] | None = None,
+) -> dict[str, str]:
+    """All reproducibility tags for a training / evaluation / optimisation run.
+
+    Args:
+        root: Project root (where ``dvc.lock`` lives).
+        processed_prices: Path of the processed price dataset, or ``None`` when
+            the run does not read prices (the sentiment model).
+        seed: Random seed used by the run.
+        dvc_inputs: Extra DVC-tracked inputs, ``{tag_name: (stage, path)}``;
+            each becomes a tag holding the content hash from ``dvc.lock``.
+    """
     import mlflow  # noqa: PLC0415
-    import torch  # noqa: PLC0415
 
     tags: dict[str, str] = {k: str(v) for k, v in git_state(root).items()}
-    tags["dvc_prices_md5"] = str(dvc_output_md5(root, "process", processed_prices))
-    manifest = root / "reports" / "export_manifest.json"
-    if manifest.exists():
-        tags["export_prices_sha256"] = json.loads(manifest.read_text())["prices"]["sha256"]
+    if processed_prices is not None:
+        tags["dvc_prices_md5"] = str(dvc_output_md5(root, "process", processed_prices))
+        manifest = root / "reports" / "export_manifest.json"
+        if manifest.exists():
+            tags["export_prices_sha256"] = json.loads(manifest.read_text())["prices"]["sha256"]
+    for tag, (stage, path) in (dvc_inputs or {}).items():
+        tags[tag] = str(dvc_output_md5(root, stage, path))
     tags.update(
         {
             "seed": str(seed),
             "python_version": platform.python_version(),
-            "torch_version": torch.__version__,
             "mlflow_version": mlflow.__version__,
             "platform": platform.platform(),
             "cpu_count": str(os.cpu_count()),
             "entry_point": " ".join(sys.argv)[:250],
         }
     )
+    for library in ("torch", "transformers", "numpy", "scipy"):
+        try:
+            tags[f"{library}_version"] = importlib.import_module(library).__version__
+        except ImportError:
+            continue
     return tags

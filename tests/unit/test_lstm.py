@@ -195,6 +195,9 @@ def test_training_packages_a_working_pyfunc_and_evaluation(project):
     assert {"model", "naive", "drift", "skill_vs_naive", "beats_naive"} <= set(report)
     assert mlflow.get_run(info["run_id"]).data.tags["evaluated"] == "true"
     assert (root / "reports/plots/lstm_horizon_mape.csv").exists()
+    attribution = pd.read_csv(root / "reports/plots/lstm_input_attribution.csv")
+    assert attribution["lag_from"].iloc[0] == 1 and len(attribution) == 2  # L=20, blocks of 10
+    assert report["attribution_latest_block_pct"] >= 0
 
 
 # ------------------------------------------------------------------- lineage
@@ -222,3 +225,80 @@ def test_git_state_ignores_dvc_outputs(tmp_path):
     assert dvc_output_md5(tmp_path, "process", "data/processed/prices") == "abc.dir"
     assert dvc_output_md5(tmp_path, "process", "missing") is None
     assert json.dumps(state)
+
+
+# ----------------------------------------------------- Day 4: extra channels
+def test_extra_channel_windows_and_network():
+    ws = data.make_windows(_series(n=40), L, H)
+    vol = data.make_windows(
+        {t: s.pct_change().abs().fillna(0) for t, s in _series(n=40).items()}, L, H
+    )
+    two = data.WindowSet(
+        *[
+            getattr(ws, f)
+            for f in ("x_raw", "y_raw", "tickers", "origins", "position", "n_per_ticker")
+        ],
+        vol.x_raw[:, :, None],
+    )
+    x, y, lo, _ = two.scaled()
+    assert x.shape == (len(ws), L, 2) and np.allclose(x[:, :, 0], ws.scaled()[0][:, :, 0])
+    assert two.subset(two.tickers == "AAPL").x_extra.shape[0] == (two.tickers == "AAPL").sum()
+    net = LSTMForecaster(horizon=H, hidden_size=8, input_size=2)
+    xt = torch.from_numpy(x[:3])
+    assert torch.allclose(net(xt), xt[:, -1, :1].expand(-1, H))  # residual anchor = price
+
+
+def test_price_only_network_is_unchanged_by_input_size_default():
+    torch.manual_seed(0)
+    a = LSTMForecaster(horizon=H, hidden_size=8)
+    torch.manual_seed(0)
+    b = LSTMForecaster(horizon=H, hidden_size=8, input_size=1)
+    for p, q in zip(a.parameters(), b.parameters(), strict=True):
+        assert torch.equal(p, q)  # Day 3 models load and train exactly as before
+
+
+# ---------------------------------------------------- Day 4: explainability
+def test_occlude_interpolates_and_flattens_edges():
+    from finsight.models.lstm.explain import occlude
+
+    x = np.array([[1.0, 5.0, 9.0, 3.0, 4.0]])
+    assert np.allclose(occlude(x, 1, 3), [[1.0, 5 / 3, 7 / 3, 3.0, 4.0]])  # line 1 -> 3
+    assert np.allclose(occlude(x, 0, 2), [[9.0, 9.0, 9.0, 3.0, 4.0]])
+    assert np.allclose(occlude(x, 3, 5), [[1.0, 5.0, 9.0, 9.0, 9.0]])
+    with pytest.raises(ValueError):
+        occlude(x, 0, 5)
+
+
+def test_attribution_of_naive_model_is_all_in_the_last_block():
+    from finsight.models.lstm.explain import occlusion_attribution
+
+    ws = data.make_windows(_series(n=60), L, H)
+    table = occlusion_attribution(
+        lambda x: np.repeat(x[:, -1:], H, axis=1), ws.x_raw, ws.y_raw, block=5
+    )
+    assert list(table["lag_from"]) == [1, 6, 11, 16]
+    assert table.iloc[0]["mean_abs_change_pct"] > 0
+    assert (table.iloc[1:]["mean_abs_change_pct"] == 0).all()
+
+
+def test_feature_experiment_runs_and_decides_on_validation(project):
+    from finsight.models.lstm import feature_experiment as fe
+    from finsight.models.lstm.train import run_training
+
+    root, path = project
+    frame = pd.read_parquet(path)
+    frame["volatility_20"] = frame.groupby("ticker")["price"].transform(
+        lambda s: np.log(s).diff().rolling(20).std()
+    )
+    frame.to_parquet(path / "part-00000.parquet", index=False)
+    run_training(PARAMS, path, root)
+    prices, feats = fe.load_aligned(path, "volatility_20")
+    base, extra = fe.build_windows(prices, feats, L, H)
+    assert np.array_equal(base.x_raw, extra.x_raw) and extra.x_extra.shape[2] == 1
+
+    mlflow.create_experiment("finsight-lstm-experiments")
+    mlflow.set_experiment("finsight-lstm-experiments")
+    verdict = fe.run_experiment(PARAMS, path, root, seeds=[7, 8])
+    assert len(verdict["runs"]) == 4 and isinstance(verdict["recommend_feature"], bool)
+    assert {r["variant"] for r in verdict["summary"]} == {"price", "price+volatility_20"}
+    assert mlflow.get_run(verdict["run_id"]).data.tags["recommend_feature"] in ("true", "false")

@@ -31,7 +31,9 @@ finsight/
 │   ├── ci/                     # unit-test gate stage
 │   ├── data/                   # export (Mongo -> Parquet) and validate (expectation suite)
 │   ├── etl/                    # Spark ETL stage + throughput benchmark
-│   └── models/                 # MLflow tracking/lineage; lstm/ (data, network, metrics, pyfunc, train, evaluate)
+│   ├── models/                 # MLflow tracking/lineage; lstm/ (data, network, metrics, pyfunc, train, evaluate, explain, feature_experiment)
+│   ├── sentiment/              # fetch (pinned model + PhraseBank), evaluate/calibrate/package, incremental scoring
+│   └── portfolio/              # MPT grid search, SciPy check, walk-forward backtest, publishing
 ├── tests/{unit,integration}/   # pytest suites
 ├── notebooks/01_eda.ipynb      # exploratory data analysis (built by scripts/build_eda_notebook.py)
 ├── scripts/                    # preflight check, notebook builder
@@ -189,6 +191,39 @@ mlflow run . -e train_lstm --env-manager local --experiment-name finsight-lstm  
 
 **Reproduce any result**: `git checkout <commit> && dvc checkout && dvc repro -f train_lstm evaluate_lstm`;
 the MLflow run for that commit is in `reports/lstm_train.json` (`run_id`).
+
+---
+
+## Day 4 runbook — news sentiment + portfolio optimisation + explainability
+
+```
+unit_tests ─┬─► export ─► validate ─► process ─┬─► train_lstm ─► evaluate_lstm (+ input attribution)
+            │                                  ├─► optimize_portfolio ──────────► MongoDB portfolios
+            │                                  └─► score_sentiment ─────────────► MongoDB news_sentiment,
+            └─► evaluate_sentiment ◄─ fetch_sentiment        ▲                     sentiment_weekly
+                     └── models/sentiment/model ─────────────┘
+```
+
+```bash
+pip install -r requirements/dev.txt          # adds transformers 5.20.2 + scipy 1.17.1
+docker compose up -d mongo mlflow            # if not already running
+python scripts/check_env.py                  # + transformers, scipy, Hugging Face Hub reachable
+python -m finsight.ingestion.cli incremental # top up today's prices + news
+dvc repro                                    # first run ~15-20 min (see table); later runs ~1-2 min
+dvc metrics show reports/sentiment_eval.json reports/sentiment_scoring.json reports/portfolio.json
+dvc plots show                               # dvc_plots/index.html: + attribution, band curve, backtest, frontier
+make feature-experiment                      # LSTM price vs price+volatility (MLflow only, ~5-8 min)
+```
+
+| Stage | Reads | Writes | MLflow | First run |
+|---|---|---|---|---|
+| `fetch_sentiment` | Hugging Face Hub (pinned commits) | `models/sentiment/base` (~268 MB), `data/external/financial_phrasebank.csv` | — | 1-3 min download, then never again |
+| `evaluate_sentiment` | base model, PhraseBank | `models/sentiment/model` (pyfunc), `run.json`, `reports/sentiment_eval.json`, band curve, confusion matrix | `finsight-sentiment`: metrics vs majority baseline, latency, errors, packaged model | ~2-3 min |
+| `score_sentiment` | processed news, packaged model | `data/sentiment/*.parquet`, `reports/sentiment_scoring.json`, MongoDB | — | ~5 min (all articles); daily: seconds |
+| `optimize_portfolio` | processed prices | `reports/portfolio*.json`, plots, MongoDB | `finsight-portfolio`: weights, in-/out-of-sample Sharpe, figures | ~10 s |
+| `train_lstm` / `evaluate_lstm` | (unchanged inputs) | + `reports/plots/lstm_input_attribution.csv` | + attribution figure and metrics | retrains once today (its code changed); same metrics as Day 3 |
+
+After a MongoDB reset, re-publish with `dvc repro -f score_sentiment optimize_portfolio`.
 
 ---
 

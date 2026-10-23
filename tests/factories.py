@@ -85,3 +85,64 @@ def make_news(
             frame[column] = frame[column].astype("string")
     frame["published_at"] = pd.to_datetime(frame["published_at"], utc=True)
     return frame
+
+
+# --------------------------------------------------------------------------- #
+# Day 4: sentiment
+# --------------------------------------------------------------------------- #
+TINY_VOCAB = [
+    "[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]", "the", "company", "shares", "rose",
+    "fell", "profit", "loss", "growth", "decline", "reports", "results", "on", "monday",
+    "strong", "weak", "sales", "beat", "missed", "expectations", "headline", ".", ",",
+    "aapl", "msft", "moved", "after", "report",
+]  # fmt: skip
+
+
+def make_tiny_sentiment_model(path, seed: int = 0, labels=("NEGATIVE", "POSITIVE")):
+    """A randomly initialised 1-layer DistilBERT laid out like the Hub repo.
+
+    Same files as ``distilbert-base-uncased-finetuned-sst-2-english``
+    (``config.json``, ``model.safetensors``, ``tokenizer_config.json``,
+    ``vocab.txt``), so the real loading code is exercised offline in ~1 s.
+    Its predictions are meaningless; tests check mechanics, not accuracy.
+    """
+    import json
+
+    import torch
+    from transformers import DistilBertConfig, DistilBertForSequenceClassification
+
+    path.mkdir(parents=True, exist_ok=True)
+    (path / "vocab.txt").write_text("\n".join(TINY_VOCAB) + "\n", encoding="utf-8")
+    (path / "tokenizer_config.json").write_text(
+        json.dumps({"do_lower_case": True, "model_max_length": 64}), encoding="utf-8"
+    )
+    torch.manual_seed(seed)
+    config = DistilBertConfig(
+        vocab_size=len(TINY_VOCAB),
+        dim=16,
+        n_layers=1,
+        n_heads=2,
+        hidden_dim=32,
+        max_position_embeddings=64,
+        id2label=dict(enumerate(labels)),
+        label2id={label: i for i, label in enumerate(labels)},
+    )
+    DistilBertForSequenceClassification(config).save_pretrained(path)
+    (path / "tokenizer.json").unlink(missing_ok=True)  # the Hub repo ships vocab.txt only
+    return path
+
+
+def make_phrasebank(n_neutral=60, n_positive=25, n_negative=15) -> pd.DataFrame:
+    """Labelled sentences shaped like ``data/external/financial_phrasebank.csv``."""
+    rows = []
+    for label, n, word in (
+        ("neutral", n_neutral, "reports results on monday"),
+        ("positive", n_positive, "profit rose strong growth"),
+        ("negative", n_negative, "loss fell weak decline"),
+    ):
+        for i in range(n):
+            rows.append({"sentence": f"The company {word} {i}.", "label": label})
+    frame = pd.DataFrame(rows)
+    frame.insert(0, "id", range(len(frame)))
+    frame["agreement"] = "AllAgree"
+    return frame

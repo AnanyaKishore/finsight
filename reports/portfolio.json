@@ -1,0 +1,14 @@
+{
+  "as_of": "2026-10-22",
+  "method": "max_sharpe",
+  "sharpe": 7.70888,
+  "expected_return": 0.85458,
+  "volatility": 0.105797,
+  "equal_weight_sharpe": 1.838257,
+  "grid_sharpe_gap": 0.045054,
+  "oos_sharpe_max_sharpe": 0.116019,
+  "oos_sharpe_equal_weight": 0.604725,
+  "oos_sharpe_min_volatility": 0.310376,
+  "oos_beats_equal_weight": false,
+  "run_id": "0deb94651144433b8a8f5860ee2d1db3"
+}

@@ -39,7 +39,7 @@ Deviations from the proposal and their rationale: `docs/DESIGN_DECISIONS.md`.
 | mongo | 512 MB | WiredTiger cache capped at 0.25 GB |
 | mlflow (tracking + registry) | 768 MB | SQLite backend + served artifacts; ~510 MB measured with background jobs disabled |
 | lstm-serve | 512 MB | CPU PyTorch, tiny model |
-| sentiment-serve | 1.2 GB | DistilBERT (~260 MB weights) + torch |
+| sentiment-serve | 1.2 GB | DistilBERT (~268 MB weights) + torch; batch scoring measured at ~1.3 GB peak (runs in the pipeline, not alongside Spark) |
 | backend (FastAPI) | 256 MB | |
 | frontend (nginx) | 64 MB | static files |
 | scheduler (+ Spark/training jobs when running) | 2 GB peak | Spark `local[4]`, driver 1 GB |
@@ -102,8 +102,12 @@ training, UI) reads what ingestion writes to MongoDB.
 - `MLproject` (entry points `train_lstm`, `evaluate_lstm`, later `sentiment_eval`, `optimize_portfolio`) + `python_env.yaml` mirroring `requirements/*.txt`.
 - DVC stages `train_lstm` → `evaluate_lstm`; metrics + plots registered with DVC (`dvc metrics show`, `dvc plots show`).
 
-### Day 4 — Sat 24 Oct · Sentiment model + portfolio optimisation
+### Day 4 — Sat 24 Oct · Sentiment model + portfolio optimisation ✅ (done 23 Oct)
 **Role:** the other two analyses.
+**Delivered:** DVC stages `fetch_sentiment` → `evaluate_sentiment` → `score_sentiment` and
+`optimize_portfolio`; LSTM occlusion attribution (in `evaluate_lstm`); feature-impact
+experiment (`make feature-experiment`, MLflow only); MongoDB collections `news_sentiment`,
+`sentiment_weekly`, `portfolios`; 132 unit tests. Details in DESIGN_DECISIONS.md (D-09, D-11, D-12, Day 4).
 - Sentiment: DistilBERT-SST-2 wrapped as pyfunc (text → label, confidence, score ∈ [−1, 1]); evaluation on a labelled financial-news sample (e.g. Financial PhraseBank, neutral removed) → accuracy, F1, confusion matrix, latency; logged to MLflow.
 - Batch scoring of new articles (only unscored docs), weekly aggregates with article counts.
 - Portfolio: vectorised long-only grid (step 0.1 → 92 378 weightings), Sharpe/return/volatility with risk-free rate param; walk-forward comparison with equal weight; result stored in Mongo (`portfolio`) + MLflow.

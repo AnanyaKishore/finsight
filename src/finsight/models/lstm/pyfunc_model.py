@@ -43,6 +43,7 @@ def build_network(config: dict[str, Any]) -> Any:
         hidden_size=int(config["hidden_size"]),
         num_layers=int(config["num_layers"]),
         dropout=float(config["dropout"]),
+        input_size=int(config.get("input_size", 1)),
     )
 
 

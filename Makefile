@@ -3,10 +3,10 @@
 # Load .env (if present) so targets can use the same variables as compose.
 -include .env
 export
-.PHONY: help install lint format test test-int up down mongo-shell ingest-plan backfill incremental status build repro dag eda benchmark train plots mlflow-ui
+.PHONY: help install lint format test test-int up down mongo-shell ingest-plan backfill incremental status build repro dag eda benchmark train plots sentiment portfolio feature-experiment mlflow-ui
 
 help:            ## list targets
-	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*## "}{printf "  %-14s %s\n",$$1,$$2}'
+	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*## "}{printf "  %-20s %s\n",$$1,$$2}'
 
 install:         ## install dev deps + package in editable mode
 	pip install -r requirements/dev.txt && pip install -e .
@@ -62,8 +62,17 @@ benchmark:       ## Spark ETL throughput at 1x/10x/50x data volume -> reports/et
 train:           ## (re)train + evaluate the LSTM through DVC (only if inputs changed)
 	dvc repro evaluate_lstm
 
-plots:           ## render DVC plots (learning curve, MAPE by horizon) -> dvc_plots/index.html
+plots:           ## render all DVC plots -> dvc_plots/index.html
 	dvc plots show
+
+sentiment:       ## fetch (once), evaluate + calibrate, then score news sentiment through DVC
+	dvc repro score_sentiment
+
+portfolio:       ## optimise today's portfolio + walk-forward backtest through DVC
+	dvc repro optimize_portfolio
+
+feature-experiment:  ## LSTM: price-only vs price+volatility input (MLflow only, ~3-5 min)
+	python -m finsight.models.lstm.feature_experiment
 
 mlflow-ui:       ## start the MLflow server (UI at http://localhost:5000)
 	docker compose up -d mlflow

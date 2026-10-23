@@ -18,7 +18,12 @@ class LSTMForecaster(nn.Module):
     """Direct multi-horizon LSTM with a residual connection to the last input."""
 
     def __init__(
-        self, horizon: int, hidden_size: int = 64, num_layers: int = 1, dropout: float = 0.1
+        self,
+        horizon: int,
+        hidden_size: int = 64,
+        num_layers: int = 1,
+        dropout: float = 0.1,
+        input_size: int = 1,
     ) -> None:
         """Build the network.
 
@@ -27,10 +32,13 @@ class LSTMForecaster(nn.Module):
             hidden_size: LSTM hidden units.
             num_layers: Stacked LSTM layers.
             dropout: Dropout between stacked layers (ignored for one layer).
+            input_size: Input channels; channel 0 is always the scaled price
+                (the residual anchor). Extra channels are only used by the
+                feature experiment (``feature_experiment.py``).
         """
         super().__init__()
         self.lstm = nn.LSTM(
-            input_size=1,
+            input_size=input_size,
             hidden_size=hidden_size,
             num_layers=num_layers,
             batch_first=True,
@@ -41,7 +49,7 @@ class LSTMForecaster(nn.Module):
         nn.init.zeros_(self.head.bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Map ``(batch, lookback, 1)`` scaled prices to ``(batch, horizon)``."""
+        """Map ``(batch, lookback, channels)`` scaled inputs to ``(batch, horizon)``."""
         out, _ = self.lstm(x)
         correction = self.head(out[:, -1, :])
-        return x[:, -1, :] + correction
+        return x[:, -1, :1] + correction

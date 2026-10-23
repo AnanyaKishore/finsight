@@ -1,0 +1,350 @@
+"""Tests for news sentiment: scoring rules, data fetch/parse, evaluation, incremental scoring."""
+
+from __future__ import annotations
+
+import io
+import json
+import zipfile
+from datetime import date
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from finsight.common.exceptions import FinSightError
+from finsight.sentiment import evaluate as ev
+from finsight.sentiment import fetch
+from finsight.sentiment import score as sc
+from finsight.sentiment.scoring import (
+    clean_texts,
+    labels_for,
+    model_version,
+    scores_from_probabilities,
+)
+from tests.factories import make_news, make_phrasebank, make_tiny_sentiment_model
+
+
+# ------------------------------------------------------------------ scoring
+def test_score_is_p_pos_minus_p_neg_and_bounded():
+    s = scores_from_probabilities(np.array([0.9, 0.5, 0.0]), np.array([0.1, 0.5, 1.0000001]))
+    assert np.allclose(s, [-0.8, 0.0, 1.0]) and s.max() <= 1.0
+
+
+def test_labels_with_and_without_neutral_band():
+    s = np.array([-0.9, -0.3, 0.0, 0.3, 0.9])
+    assert list(labels_for(s, 0.0)) == ["negative", "negative", "neutral", "positive", "positive"]
+    assert list(labels_for(s, 0.5)) == ["negative", "neutral", "neutral", "neutral", "positive"]
+    assert list(labels_for(np.array([0.5, -0.5]), 0.5)) == ["positive", "negative"]  # inclusive
+
+
+def test_model_version_changes_with_band_and_length():
+    a = model_version("714eb0fa89d2f80546fda750413ed43d93601a13", 0.9, 256)
+    assert a == "714eb0fa89d2-band0.9000-len256"
+    assert a != model_version("714eb0fa89d2f80546fda750413ed43d93601a13", 0.95, 256)
+    assert a != model_version("714eb0fa89d2f80546fda750413ed43d93601a13", 0.9, 128)
+
+
+def test_clean_texts_handles_missing_and_whitespace():
+    assert clean_texts([None, float("nan"), "  a \n b  "]) == ["", "", "a b"]
+
+
+@pytest.fixture(scope="module")
+def tiny_model(tmp_path_factory):
+    pytest.importorskip("transformers")
+    return make_tiny_sentiment_model(tmp_path_factory.mktemp("tiny") / "base")
+
+
+def test_scorer_is_order_preserving_and_batch_invariant(tiny_model):
+    from finsight.sentiment.scoring import SentimentScorer
+
+    texts = ["the company shares rose", None, "loss fell", "strong growth " * 30, "profit"]
+    scorer = SentimentScorer(tiny_model, max_length=32, batch_size=2, threads=1)
+    a = scorer.scores(texts)
+    scorer.batch_size = 1
+    b = scorer.scores(texts)
+    assert a.shape == (5,) and np.all(np.abs(a) <= 1)
+    assert np.allclose(a, b, atol=1e-6)  # padding/batching must not change a score
+    reordered = scorer.scores(texts[::-1])
+    assert np.allclose(reordered[::-1], a, atol=1e-6)
+
+
+def test_scorer_rejects_models_without_pos_neg_labels(tmp_path):
+    pytest.importorskip("transformers")
+    from finsight.sentiment.scoring import SentimentScorer
+
+    path = make_tiny_sentiment_model(tmp_path / "m", labels=("A", "B", "C"))
+    with pytest.raises(ValueError, match="POSITIVE/NEGATIVE"):
+        SentimentScorer(path)
+
+
+# -------------------------------------------------------------------- fetch
+def test_parse_phrasebank_keeps_at_signs_and_latin1():
+    raw = "Revenue rose 5 % @ Q3 .@positive\r\nNokia's caf\xe9 sales fell .@negative\n\n".encode(
+        "iso-8859-1"
+    )
+    frame = fetch.parse_phrasebank(raw, "AllAgree")
+    assert frame["label"].tolist() == ["positive", "negative"]
+    assert frame["sentence"].iloc[0] == "Revenue rose 5 % @ Q3 ."
+    assert "café" in frame["sentence"].iloc[1]
+    with pytest.raises(FinSightError):
+        fetch.parse_phrasebank(b"no label here", "AllAgree")
+    with pytest.raises(FinSightError):
+        fetch.parse_phrasebank(b"x@bullish", "AllAgree")
+
+
+def test_phrasebank_from_zip_selects_agreement_level():
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("FinancialPhraseBank-v1.0/Sentences_AllAgree.txt", "Up .@positive\n")
+        zf.writestr("FinancialPhraseBank-v1.0/Sentences_50Agree.txt", "a@neutral\nb@neutral\n")
+    assert len(fetch.phrasebank_from_zip(buf.getvalue(), "AllAgree")) == 1
+    assert len(fetch.phrasebank_from_zip(buf.getvalue(), "50Agree")) == 2
+    with pytest.raises(FinSightError):
+        fetch.phrasebank_from_zip(buf.getvalue(), "66Agree")
+
+
+def test_fetch_model_cleans_hub_metadata_and_checks_files(tmp_path, monkeypatch):
+    huggingface_hub = pytest.importorskip("huggingface_hub")
+
+    def fake_snapshot(repo_id, revision, local_dir, allow_patterns):
+        for name in allow_patterns:
+            (tmp_path / "dest" / name).write_text("x")
+        (tmp_path / "dest" / ".cache").mkdir()
+
+    monkeypatch.setattr(huggingface_hub, "snapshot_download", fake_snapshot)
+    info = fetch.fetch_model("org/model", "abc123", tmp_path / "dest")
+    assert not (tmp_path / "dest" / ".cache").exists()
+    assert json.loads((tmp_path / "dest" / "SOURCE.json").read_text())["revision"] == "abc123"
+    assert info["files"] == fetch.MODEL_FILES
+
+    monkeypatch.setattr(huggingface_hub, "snapshot_download", lambda **kw: None)
+    with pytest.raises(FinSightError, match="incomplete"):
+        fetch.fetch_model("org/model", "abc123", tmp_path / "dest")
+
+
+def test_download_retry_policy():
+    class Resp:
+        def __init__(self, status):
+            self.status_code = status
+
+    class FakeHTTPError(Exception):
+        def __init__(self, status):
+            self.response = Resp(status)
+
+    assert fetch._network_error(FakeHTTPError(503)) and fetch._network_error(FakeHTTPError(429))
+    assert not fetch._network_error(FakeHTTPError(404))
+    assert fetch._network_error(ConnectionError()) and not fetch._network_error(ValueError())
+
+
+# --------------------------------------------------------------- evaluation
+def test_classification_metrics_known_values():
+    m = ev.classification_metrics(
+        ["positive", "positive", "negative", "negative"],
+        ["positive", "negative", "negative", "neutral"],  # neutral = wrong in binary
+        ("negative", "positive"),
+    )
+    assert m["accuracy"] == 0.5
+    assert m["confusion"] == [[1, 0], [1, 1]]
+    assert m["per_class"]["positive"]["precision"] == 1.0
+    assert m["per_class"]["positive"]["recall"] == 0.5
+    assert m["per_class"]["negative"]["recall"] == 0.5
+
+
+def test_stratified_split_is_seeded_and_proportional():
+    labels = make_phrasebank()["label"]
+    a = ev.stratified_split(labels, 0.5, seed=1)
+    b = ev.stratified_split(labels, 0.5, seed=1)
+    assert np.array_equal(a, b)
+    assert not np.array_equal(a, ev.stratified_split(labels, 0.5, seed=2))
+    for cls, n in labels.value_counts().items():
+        assert a[labels.to_numpy() == cls].sum() == round(n * 0.5)
+
+
+def _scored_phrasebank():
+    frame = make_phrasebank()
+    rng = np.random.default_rng(0)
+    centre = frame["label"].map({"neutral": 0.0, "positive": 0.95, "negative": -0.95})
+    frame["score"] = np.clip(centre + rng.normal(0, 0.05, len(frame)), -1, 1)
+    return frame
+
+
+def test_band_calibration_separates_neutral():
+    frame = _scored_phrasebank()
+    band, curve = ev.calibrate_band(frame["score"].to_numpy(), frame["label"].tolist())
+    assert 0.1 < band < 0.9
+    assert curve["macro_f1"].max() == pytest.approx(1.0)
+    assert curve.loc[curve["band"] == 0.0, "macro_f1"].iloc[0] < 1.0  # binary misses neutral
+
+
+def test_evaluate_scores_against_majority_baselines():
+    result, _ = ev.evaluate_scores(_scored_phrasebank(), 0.5, seed=42)
+    assert result["n_calibration"] + result["n_test"] == 100
+    assert result["binary"]["accuracy"] == 1.0
+    assert result["binary_majority_baseline"]["predicts"] == "positive"
+    assert result["three_class"]["macro_f1"] > result["three_class_majority_baseline"]["macro_f1"]
+    assert result["three_class_majority_baseline"]["predicts"] == "neutral"
+    compact = ev.compact(result, {"latency_p50_ms": 1.0, "latency_p95_ms": 2.0}, "rid")
+    assert compact["beats_baseline_macro_f1"] is True and compact["run_id"] == "rid"
+
+
+def test_evaluate_scores_needs_both_polarities():
+    frame = _scored_phrasebank()
+    with pytest.raises(ValueError):
+        ev.evaluate_scores(frame[frame["label"] != "negative"], 0.5, seed=42)
+
+
+def test_most_confident_errors_are_ranked():
+    frame = pd.DataFrame(
+        {"sentence": ["a", "b", "c"], "label": ["positive"] * 3, "score": [-0.2, -0.9, 0.8]}
+    )
+    errors = ev.most_confident_errors(frame, np.array(["negative", "negative", "positive"]))
+    assert [e["sentence"] for e in errors] == ["b", "a"]
+
+
+# --------------------------------------------------------- incremental score
+def _news_frame():
+    news = make_news(weeks=2, per_week=4)
+    news["week_start"] = (
+        pd.to_datetime(news["published_at"])
+        .dt.tz_localize(None)
+        .dt.to_period("W-SUN")
+        .dt.start_time
+    ).dt.date
+    return news
+
+
+def _write_news(tmp_path):
+    path = tmp_path / "news"
+    path.mkdir()
+    _news_frame().to_parquet(path / "part-0.parquet", index=False)
+    return path
+
+
+def test_incremental_scoring_reuses_and_rescores(tmp_path):
+    news = sc.load_news(_write_news(tmp_path))
+    calls = []
+
+    def fake(texts):
+        calls.append(len(texts))
+        return np.full(len(texts), 0.5)
+
+    first, counts = sc.score_incremental(news, sc.load_cache(tmp_path / "none.parquet"), "v1", fake)
+    assert counts == {"reused": 0, "scored": len(news)}
+    cache = first.copy()
+    _, counts = sc.score_incremental(news, cache, "v1", fake)
+    assert counts == {"reused": len(news), "scored": 0} and calls == [len(news)]
+    _, counts = sc.score_incremental(news, cache, "v2", fake)  # new model version
+    assert counts["scored"] == len(news)
+    edited = news.copy()
+    edited.loc[0, "text"] = "edited"
+    edited["text_sha1"] = sc.text_hash(edited["text"].tolist())
+    _, counts = sc.score_incremental(edited, cache, "v1", fake)
+    assert counts == {"reused": len(news) - 1, "scored": 1}
+
+
+def test_weekly_aggregate_counts_and_explanations(tmp_path):
+    news = sc.load_news(_write_news(tmp_path))
+    scores = np.tile([0.9, -0.8, 0.1, 0.95], len(news) // 4)
+    merged, _ = sc.score_incremental(news, sc.load_cache(tmp_path / "x"), "v", lambda t: scores)
+    scored = sc.finalise(merged, neutral_band=0.5)
+    weekly = sc.weekly_aggregate(scored, top_n=1)
+    assert len(weekly) == 2 * 2  # 2 tickers x 2 weeks
+    row = weekly.iloc[0]
+    assert row["article_count"] == 4
+    assert (row["positive"], row["negative"], row["neutral"]) == (2, 1, 1)
+    assert row["mean_score"] == pytest.approx(np.mean([0.9, -0.8, 0.1, 0.95]))
+    assert row["top_positive"][0]["score"] == 0.95 and len(row["top_positive"]) == 1
+    assert row["top_negative"][0]["score"] == -0.8
+    assert scored["confidence"].between(0.5, 1.0).all()
+
+
+def test_publish_is_idempotent_and_removes_stale(db, tmp_path):
+    from finsight.common.mongo import NEWS_SENTIMENT, SENTIMENT_WEEKLY
+
+    news = sc.load_news(_write_news(tmp_path))
+    merged, _ = sc.score_incremental(
+        news, sc.load_cache(tmp_path / "x"), "v", lambda t: np.zeros(len(t))
+    )
+    scored = sc.finalise(merged, 0.5)
+    weekly = sc.weekly_aggregate(scored, 3)
+    sc.publish(db, scored, weekly, "run1")
+    again = sc.publish(db, scored, weekly, "run1")
+    assert again["articles_upserted"] == 0 and again["weeks_upserted"] == 0
+    assert db[NEWS_SENTIMENT].count_documents({}) == len(scored)
+    assert db[SENTIMENT_WEEKLY].count_documents({}) == len(weekly)
+    doc = db[SENTIMENT_WEEKLY].find_one({}, {"_id": 0})
+    assert doc["week_start"].tzinfo is not None and "top_positive" in doc
+
+    fewer = scored[scored["ticker"] == "AAPL"]
+    res = sc.publish(db, fewer, sc.weekly_aggregate(fewer, 3), "run2")
+    assert res["stale_removed"] == (len(scored) - len(fewer)) + 2
+    assert db[NEWS_SENTIMENT].count_documents({"ticker": "MSFT"}) == 0
+
+
+# -------------------------------------------------- packaging + stage chain
+SENT_PARAMS = {
+    "base_model": "tiny/distilbert",
+    "base_revision": "0123456789abcdef0123456789abcdef01234567",
+    "base_dir": "models/sentiment/base",
+    "phrasebank_repo": "tiny/phrasebank",
+    "phrasebank_revision": "fedcba",
+    "phrasebank_agreement": "AllAgree",
+    "phrasebank_path": "data/external/financial_phrasebank.csv",
+    "calibration_share": 0.5,
+    "seed": 42,
+    "max_length": 32,
+    "batch_size": 8,
+    "torch_threads": 1,
+    "top_headlines": 2,
+    "experiment_name": "test-sentiment",
+    "model_dir": "models/sentiment",
+    "scores_path": "data/sentiment/article_scores.parquet",
+    "weekly_path": "data/sentiment/weekly.parquet",
+}
+
+
+@pytest.fixture
+def sentiment_project(tmp_path, monkeypatch):
+    mlflow = pytest.importorskip("mlflow")
+    pytest.importorskip("transformers")
+    from tests.conftest import PROJECT_ROOT
+
+    make_tiny_sentiment_model(tmp_path / SENT_PARAMS["base_dir"])
+    pb = tmp_path / SENT_PARAMS["phrasebank_path"]
+    pb.parent.mkdir(parents=True)
+    make_phrasebank().to_csv(pb, index=False)
+    (tmp_path / "src").symlink_to(PROJECT_ROOT / "src")
+    monkeypatch.chdir(tmp_path)
+    mlflow.set_tracking_uri(f"sqlite:///{tmp_path / 'mlflow.db'}")
+    mlflow.create_experiment("test-sentiment", artifact_location=(tmp_path / "art").as_uri())
+    mlflow.set_experiment("test-sentiment")
+    yield tmp_path, mlflow
+    mlflow.set_tracking_uri("")
+
+
+def test_evaluate_packages_a_working_pyfunc_and_scoring_uses_it(sentiment_project):
+    root, mlflow = sentiment_project
+    outcome = ev.run_evaluation(SENT_PARAMS, root)
+    info = json.loads((root / "models/sentiment/run.json").read_text())
+    assert info["model_version"].startswith("0123456789ab-band")
+    run = mlflow.get_run(info["run_id"])
+    assert run.data.params["n_sentences"] == "100" and "git_commit" in run.data.tags
+    assert "binary_macro_f1" in run.data.metrics and "latency_p95_ms" in run.data.metrics
+    assert len(outcome["curve"]) > 1
+
+    # Saved model is clean (loading it later writes bytecode; .dvcignore skips that).
+    assert not list((root / "models/sentiment/model").rglob("__pycache__"))
+    model = mlflow.pyfunc.load_model(str(root / "models/sentiment/model"))
+    out = model.predict(pd.DataFrame({"text": ["profit rose", "loss fell", ""]}))
+    assert list(out.columns) == ["label", "confidence", "score"]
+    assert set(out["label"]) <= {"positive", "negative", "neutral"}
+    assert out["confidence"].between(0.5, 1.0).all() and out["score"].abs().le(1).all()
+
+    news_dir = _write_news(root)
+    first = sc.run_scoring(SENT_PARAMS, news_dir, root)
+    assert first["report"]["scored_this_run"] == first["report"]["articles"]
+    second = sc.run_scoring(SENT_PARAMS, news_dir, root)
+    assert second["report"]["scored_this_run"] == 0  # everything reused from the cache
+    pd.testing.assert_frame_equal(first["scored"], second["scored"])
+    assert (root / SENT_PARAMS["weekly_path"]).exists()
+    assert first["scored"]["week_start"].iloc[0] <= date(2026, 8, 31)

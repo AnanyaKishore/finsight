@@ -32,6 +32,10 @@ PRICES = "prices"
 NEWS = "news"
 PIPELINE_RUNS = "pipeline_runs"
 API_USAGE = "api_usage"
+# Day 4: analysis results published for the API (written by DVC stages).
+NEWS_SENTIMENT = "news_sentiment"  # one document per scored article
+SENTIMENT_WEEKLY = "sentiment_weekly"  # one document per (ticker, week)
+PORTFOLIOS = "portfolios"  # one document per optimisation date
 
 
 def get_client(settings: Settings, timeout_ms: int = 5000) -> MongoClient:
@@ -62,4 +66,10 @@ def ensure_indexes(db: Database) -> None:
     db[PIPELINE_RUNS].create_index([("run_id", ASCENDING)], unique=True)
     db[PIPELINE_RUNS].create_index([("pipeline", ASCENDING), ("started_at", DESCENDING)])
     db[API_USAGE].create_index([("provider", ASCENDING), ("period", ASCENDING)], unique=True)
+    db[NEWS_SENTIMENT].create_index([("ticker", ASCENDING), ("news_id", ASCENDING)], unique=True)
+    db[NEWS_SENTIMENT].create_index([("ticker", ASCENDING), ("published_at", DESCENDING)])
+    db[SENTIMENT_WEEKLY].create_index(
+        [("ticker", ASCENDING), ("week_start", ASCENDING)], unique=True
+    )
+    db[PORTFOLIOS].create_index([("as_of", DESCENDING)], unique=True)
     log.debug("mongo indexes ensured", extra={"db": db.name})

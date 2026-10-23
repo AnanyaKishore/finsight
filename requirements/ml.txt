@@ -5,3 +5,8 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.14.1
 mlflow==3.17.2
+# Day 4: news sentiment (pretrained DistilBERT; tokenizers, safetensors and
+# huggingface_hub come with transformers) and the portfolio continuous-optimiser
+# check (SciPy SLSQP).
+transformers==5.20.2
+scipy==1.17.1

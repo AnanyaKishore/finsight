@@ -109,3 +109,53 @@ lstm:
   model_dir: models/lstm
   train_report: reports/lstm_train.json
   metrics_report: reports/lstm_metrics.json
+
+# Day 4: LSTM analysis -- kept out of `lstm` so changing it never retrains the model.
+lstm_explain:
+  attribution_block: 10            # occlusion block size (days), used by evaluate_lstm
+  experiment_seeds: [42, 43, 44]   # feature experiment (MLflow only, not a DVC stage)
+
+# --------------------------------------------------------------------------- #
+# Day 4: news sentiment (pretrained DistilBERT, no fine-tuning)
+# --------------------------------------------------------------------------- #
+sentiment:
+  # Pinned Hugging Face Hub commits: the same bytes on every machine.
+  base_model: distilbert/distilbert-base-uncased-finetuned-sst-2-english
+  base_revision: 714eb0fa89d2f80546fda750413ed43d93601a13
+  base_dir: models/sentiment/base
+  # Labelled financial news sentences for evaluation (CC BY-NC-SA 3.0).
+  phrasebank_repo: takala/financial_phrasebank
+  phrasebank_revision: 8d3fe0c36d5feec6b3cc5e455b0fcb4820fb9964
+  phrasebank_agreement: AllAgree   # 100 % annotator agreement (2,264 sentences)
+  phrasebank_path: data/external/financial_phrasebank.csv
+  calibration_share: 0.5     # half calibrates the neutral band, half is the test set
+  seed: 42
+  max_length: 256            # tokens; headline + summary is <= 1,000 characters
+  batch_size: 32
+  torch_threads: 6
+  top_headlines: 3           # per week and side: the explanation shown in the portal
+  experiment_name: finsight-sentiment
+  model_dir: models/sentiment
+  eval_report: reports/sentiment_eval.json
+  scores_path: data/sentiment/article_scores.parquet
+  weekly_path: data/sentiment/weekly.parquet
+  scoring_report: reports/sentiment_scoring.json
+
+# --------------------------------------------------------------------------- #
+# Day 4: portfolio optimisation (Modern Portfolio Theory)
+# --------------------------------------------------------------------------- #
+portfolio:
+  window_days: 30            # daily returns used for mu / Sigma (proposal: last 30 days)
+  weight_step: 0.1           # 10 % lattice -> C(19, 9) = 92,378 long-only portfolios
+  # Annual risk-free rate in the Sharpe ratio: the 3-month US T-bill yield
+  # (~3.9 % in Oct 2026). Update it when rates move; it is a tracked DVC param,
+  # so changing it re-runs the optimisation.
+  risk_free_rate: 0.039
+  trading_days_per_year: 252
+  rebalance_days: 5          # walk-forward backtest: re-optimise weekly
+  # If no portfolio has a positive excess return, max-Sharpe is meaningless
+  # (it would pick the most volatile one): use minimum volatility instead.
+  no_positive_sharpe_fallback: min_volatility   # or: none
+  experiment_name: finsight-portfolio
+  report: reports/portfolio.json
+  backtest_report: reports/portfolio_backtest.json

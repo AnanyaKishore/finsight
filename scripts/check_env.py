@@ -45,6 +45,8 @@ def main() -> int:
         "pyspark",
         "torch",
         "mlflow",
+        "transformers",
+        "scipy",
     ):
         try:
             __import__(module)
@@ -119,6 +121,17 @@ def main() -> int:
         )
     except ImportError:
         pass
+
+    # Day 4: the sentiment model + PhraseBank are downloaded once by the
+    # fetch_sentiment stage; after that (DVC cache) no network is needed.
+    if (ROOT / "models" / "sentiment" / "base" / "model.safetensors").exists():
+        report(True, "Sentiment model cached", "models/sentiment/base")
+    else:
+        try:
+            requests.head("https://huggingface.co", timeout=5).raise_for_status()
+            report(True, "Hugging Face Hub reachable", "needed once for fetch_sentiment")
+        except Exception as exc:  # noqa: BLE001
+            report(False, "Hugging Face Hub reachable", f"{exc.__class__.__name__}")
 
     try:
         settings.require("marketstack_api_key")

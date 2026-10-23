@@ -1,0 +1,906 @@
+{
+  "as_of": "2026-10-22",
+  "window_start": "2026-09-11",
+  "window_end": "2026-10-22",
+  "window_days": 30,
+  "weight_step": 0.1,
+  "risk_free_rate": 0.039,
+  "grid_size": 92378,
+  "grid_seconds": 0.088,
+  "fallback_used": false,
+  "allocation": {
+    "method": "max_sharpe",
+    "weights": {
+      "AAPL": 0.2,
+      "AMZN": 0.0,
+      "GOOGL": 0.0,
+      "JPM": 0.0,
+      "META": 0.0,
+      "MSFT": 0.0,
+      "NVDA": 0.1,
+      "TSLA": 0.0,
+      "V": 0.4,
+      "WMT": 0.3
+    },
+    "expected_return": 0.85458,
+    "volatility": 0.105797,
+    "sharpe": 7.70888
+  },
+  "in_sample": {
+    "max_sharpe": {
+      "method": "max_sharpe",
+      "weights": {
+        "AAPL": 0.2,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.0,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.1,
+        "TSLA": 0.0,
+        "V": 0.4,
+        "WMT": 0.3
+      },
+      "expected_return": 0.85458,
+      "volatility": 0.105797,
+      "sharpe": 7.70888
+    },
+    "min_volatility": {
+      "method": "min_volatility",
+      "weights": {
+        "AAPL": 0.2,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.2,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.2,
+        "TSLA": 0.0,
+        "V": 0.2,
+        "WMT": 0.2
+      },
+      "expected_return": 0.431006,
+      "volatility": 0.084509,
+      "sharpe": 4.638634
+    },
+    "equal_weight": {
+      "method": "equal_weight",
+      "weights": {
+        "AAPL": 0.1,
+        "AMZN": 0.1,
+        "GOOGL": 0.1,
+        "JPM": 0.1,
+        "META": 0.1,
+        "MSFT": 0.1,
+        "NVDA": 0.1,
+        "TSLA": 0.1,
+        "V": 0.1,
+        "WMT": 0.1
+      },
+      "expected_return": 0.295524,
+      "volatility": 0.139547,
+      "sharpe": 1.838257
+    }
+  },
+  "continuous_check": {
+    "sharpe": 7.753934,
+    "grid_sharpe_gap": 0.045054,
+    "weights": {
+      "AAPL": 0.1905,
+      "AMZN": 0.0,
+      "GOOGL": 0.0,
+      "JPM": 0.0,
+      "META": 0.0,
+      "MSFT": 0.0027,
+      "NVDA": 0.1178,
+      "TSLA": 0.0141,
+      "V": 0.3954,
+      "WMT": 0.2795
+    }
+  },
+  "walk_forward": {
+    "rebalance_days": 5,
+    "rebalances": 45,
+    "first_day": "2025-12-04",
+    "last_day": "2026-10-22",
+    "performance": {
+      "max_sharpe": {
+        "annual_return": 0.044375,
+        "annual_volatility": 0.185685,
+        "sharpe": 0.116019,
+        "total_return": 0.038991,
+        "max_drawdown": -0.154737,
+        "days": 222
+      },
+      "min_volatility": {
+        "annual_return": 0.076084,
+        "annual_volatility": 0.143841,
+        "sharpe": 0.310376,
+        "total_return": 0.066731,
+        "max_drawdown": -0.117415,
+        "days": 222
+      },
+      "equal_weight": {
+        "annual_return": 0.132444,
+        "annual_volatility": 0.163151,
+        "sharpe": 0.604725,
+        "total_return": 0.115799,
+        "max_drawdown": -0.140161,
+        "days": 222
+      }
+    },
+    "turnover": {
+      "max_sharpe": 0.3477,
+      "min_volatility": 0.2023,
+      "equal_weight": 0.0
+    },
+    "beats_equal_weight_sharpe": false
+  },
+  "rebalances": [
+    {
+      "date": "2025-12-04",
+      "in_sample_sharpe": 8.2907,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.3,
+        "AMZN": 0.0,
+        "GOOGL": 0.3,
+        "JPM": 0.0,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.4
+      }
+    },
+    {
+      "date": "2025-12-11",
+      "in_sample_sharpe": 6.3304,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.2,
+        "AMZN": 0.0,
+        "GOOGL": 0.4,
+        "JPM": 0.0,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.4
+      }
+    },
+    {
+      "date": "2025-12-18",
+      "in_sample_sharpe": 4.78,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.0,
+        "GOOGL": 0.3,
+        "JPM": 0.0,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.7
+      }
+    },
+    {
+      "date": "2025-12-26",
+      "in_sample_sharpe": 3.8675,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.0,
+        "GOOGL": 0.2,
+        "JPM": 0.1,
+        "META": 0.1,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.1,
+        "V": 0.1,
+        "WMT": 0.4
+      }
+    },
+    {
+      "date": "2026-01-05",
+      "in_sample_sharpe": 6.9143,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.0,
+        "GOOGL": 0.2,
+        "JPM": 0.2,
+        "META": 0.1,
+        "MSFT": 0.0,
+        "NVDA": 0.1,
+        "TSLA": 0.0,
+        "V": 0.1,
+        "WMT": 0.3
+      }
+    },
+    {
+      "date": "2026-01-12",
+      "in_sample_sharpe": 5.7929,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.2,
+        "GOOGL": 0.0,
+        "JPM": 0.2,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.2,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.4
+      }
+    },
+    {
+      "date": "2026-01-20",
+      "in_sample_sharpe": 3.1214,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.1,
+        "GOOGL": 0.1,
+        "JPM": 0.1,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.2,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.5
+      }
+    },
+    {
+      "date": "2026-01-27",
+      "in_sample_sharpe": 2.7742,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.0,
+        "GOOGL": 0.3,
+        "JPM": 0.0,
+        "META": 0.2,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.5
+      }
+    },
+    {
+      "date": "2026-02-03",
+      "in_sample_sharpe": 7.7201,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.1,
+        "GOOGL": 0.7,
+        "JPM": 0.0,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.2
+      }
+    },
+    {
+      "date": "2026-02-10",
+      "in_sample_sharpe": 5.6431,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.0,
+        "GOOGL": 0.2,
+        "JPM": 0.0,
+        "META": 0.1,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.7
+      }
+    },
+    {
+      "date": "2026-02-18",
+      "in_sample_sharpe": 4.01,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.0,
+        "META": 0.1,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.9
+      }
+    },
+    {
+      "date": "2026-02-25",
+      "in_sample_sharpe": 3.3381,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.2,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.0,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.2,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.6
+      }
+    },
+    {
+      "date": "2026-03-04",
+      "in_sample_sharpe": 2.7765,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.1,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.0,
+        "META": 0.3,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.6
+      }
+    },
+    {
+      "date": "2026-03-11",
+      "in_sample_sharpe": 1.8637,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.3,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.0,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.7
+      }
+    },
+    {
+      "date": "2026-03-18",
+      "in_sample_sharpe": 0.2433,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.0,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 1.0
+      }
+    },
+    {
+      "date": "2026-03-25",
+      "in_sample_sharpe": -6.6889,
+      "fallback_used": true,
+      "weights": {
+        "AAPL": 0.1,
+        "AMZN": 0.0,
+        "GOOGL": 0.1,
+        "JPM": 0.2,
+        "META": 0.0,
+        "MSFT": 0.2,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.1,
+        "WMT": 0.3
+      }
+    },
+    {
+      "date": "2026-04-01",
+      "in_sample_sharpe": 0.972,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 1.0,
+        "GOOGL": 0.0,
+        "JPM": 0.0,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-04-09",
+      "in_sample_sharpe": 1.673,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.8,
+        "GOOGL": 0.0,
+        "JPM": 0.2,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-04-16",
+      "in_sample_sharpe": 4.2295,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 1.0,
+        "GOOGL": 0.0,
+        "JPM": 0.0,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-04-23",
+      "in_sample_sharpe": 4.5504,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.8,
+        "GOOGL": 0.0,
+        "JPM": 0.2,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-04-30",
+      "in_sample_sharpe": 5.2096,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.7,
+        "GOOGL": 0.0,
+        "JPM": 0.2,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.1,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-05-07",
+      "in_sample_sharpe": 8.9842,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.2,
+        "AMZN": 0.5,
+        "GOOGL": 0.3,
+        "JPM": 0.0,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-05-14",
+      "in_sample_sharpe": 12.6295,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.2,
+        "AMZN": 0.3,
+        "GOOGL": 0.2,
+        "JPM": 0.0,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.2,
+        "TSLA": 0.0,
+        "V": 0.1,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-05-21",
+      "in_sample_sharpe": 9.9023,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.3,
+        "AMZN": 0.2,
+        "GOOGL": 0.1,
+        "JPM": 0.0,
+        "META": 0.0,
+        "MSFT": 0.1,
+        "NVDA": 0.1,
+        "TSLA": 0.0,
+        "V": 0.1,
+        "WMT": 0.1
+      }
+    },
+    {
+      "date": "2026-05-29",
+      "in_sample_sharpe": 7.6913,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.5,
+        "AMZN": 0.1,
+        "GOOGL": 0.1,
+        "JPM": 0.0,
+        "META": 0.0,
+        "MSFT": 0.1,
+        "NVDA": 0.1,
+        "TSLA": 0.0,
+        "V": 0.1,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-06-05",
+      "in_sample_sharpe": 6.9118,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.6,
+        "AMZN": 0.0,
+        "GOOGL": 0.1,
+        "JPM": 0.0,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.1,
+        "TSLA": 0.0,
+        "V": 0.2,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-06-12",
+      "in_sample_sharpe": 3.4361,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 1.0,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.0,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-06-22",
+      "in_sample_sharpe": 1.9718,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.5,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.2,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.1,
+        "TSLA": 0.0,
+        "V": 0.2,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-06-29",
+      "in_sample_sharpe": 3.3927,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.8,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.2,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-07-07",
+      "in_sample_sharpe": 4.5346,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.6,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.1,
+        "V": 0.3,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-07-14",
+      "in_sample_sharpe": 4.9076,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.6,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.4,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-07-21",
+      "in_sample_sharpe": 5.0593,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.4,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.6,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-07-28",
+      "in_sample_sharpe": 6.835,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.2,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.5,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.3,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-08-04",
+      "in_sample_sharpe": 6.4548,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.3,
+        "META": 0.0,
+        "MSFT": 0.1,
+        "NVDA": 0.1,
+        "TSLA": 0.0,
+        "V": 0.5,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-08-11",
+      "in_sample_sharpe": 7.4984,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.2,
+        "AMZN": 0.1,
+        "GOOGL": 0.0,
+        "JPM": 0.1,
+        "META": 0.0,
+        "MSFT": 0.1,
+        "NVDA": 0.2,
+        "TSLA": 0.0,
+        "V": 0.3,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-08-18",
+      "in_sample_sharpe": 5.9457,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.2,
+        "META": 0.0,
+        "MSFT": 0.2,
+        "NVDA": 0.2,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.4
+      }
+    },
+    {
+      "date": "2026-08-25",
+      "in_sample_sharpe": 4.9264,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.4,
+        "META": 0.0,
+        "MSFT": 0.2,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.4,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-09-01",
+      "in_sample_sharpe": 5.1897,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.1,
+        "META": 0.0,
+        "MSFT": 0.2,
+        "NVDA": 0.2,
+        "TSLA": 0.0,
+        "V": 0.5,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-09-09",
+      "in_sample_sharpe": 5.0293,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.0,
+        "META": 0.1,
+        "MSFT": 0.3,
+        "NVDA": 0.2,
+        "TSLA": 0.2,
+        "V": 0.2,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-09-16",
+      "in_sample_sharpe": 5.1649,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.5,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.0,
+        "META": 0.3,
+        "MSFT": 0.0,
+        "NVDA": 0.1,
+        "TSLA": 0.1,
+        "V": 0.0,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-09-23",
+      "in_sample_sharpe": 5.8417,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.6,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.0,
+        "META": 0.2,
+        "MSFT": 0.0,
+        "NVDA": 0.1,
+        "TSLA": 0.1,
+        "V": 0.0,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-09-30",
+      "in_sample_sharpe": 5.6099,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.5,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.0,
+        "META": 0.4,
+        "MSFT": 0.0,
+        "NVDA": 0.1,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-10-07",
+      "in_sample_sharpe": 7.1101,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.4,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.0,
+        "META": 0.3,
+        "MSFT": 0.0,
+        "NVDA": 0.3,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.0
+      }
+    },
+    {
+      "date": "2026-10-14",
+      "in_sample_sharpe": 6.4698,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.3,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.0,
+        "META": 0.3,
+        "MSFT": 0.0,
+        "NVDA": 0.1,
+        "TSLA": 0.0,
+        "V": 0.0,
+        "WMT": 0.3
+      }
+    },
+    {
+      "date": "2026-10-21",
+      "in_sample_sharpe": 6.7649,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.3,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.0,
+        "META": 0.1,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.3,
+        "WMT": 0.3
+      }
+    }
+  ]
+}

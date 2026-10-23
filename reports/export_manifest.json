@@ -2,25 +2,25 @@
   "news": {
     "date_range": [
       "2026-04-22",
-      "2026-10-22"
+      "2026-10-23"
     ],
     "path": "data/raw/news.parquet",
-    "rows": 10868,
-    "sha256": "90c0723b25cbfc5dd0a9e9ebb8fd58a7309bc0da1cee2c07d66326112816dfc2",
+    "rows": 11174,
+    "sha256": "2edbbbc8929ca3fe6fd2387a3da46eda86a54acc64335e03238af496dd438d26",
     "tickers": 10
   },
   "prices": {
     "date_range": [
       "2025-10-21",
-      "2026-10-21"
+      "2026-10-22"
     ],
     "path": "data/raw/prices.parquet",
-    "rows": 2492,
+    "rows": 2502,
     "rows_per_source": {
-      "marketstack": 2489,
+      "marketstack": 2499,
       "yfinance": 3
     },
-    "sha256": "89b571099da257244ca87e5c74440a675d559693fa73dbdac3ebb613d0e241c1",
+    "sha256": "f37a473cd8431f4f22cc90516357841ca4156101c724a8098b52d86b17396fb6",
     "tickers": 10
   }
 }

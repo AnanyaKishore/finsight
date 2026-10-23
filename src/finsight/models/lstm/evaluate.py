@@ -9,6 +9,8 @@ Outputs:
 * ``reports/plots/lstm_horizon_mape.csv`` -- MAPE by horizon, model vs baselines
   (``dvc plots show``)
 * ``reports/plots/lstm_test_forecasts.png`` -- last test window per ticker
+* ``reports/plots/lstm_input_attribution.csv`` -- occlusion attribution over
+  the 100-day window (Day 4, explainability; see ``explain.py``)
 * the same metrics + full per-ticker detail logged to the training MLflow run
   (``test_*`` metrics, tag ``beats_naive``), so the run carries its own verdict.
 """
@@ -30,6 +32,7 @@ from finsight.common.exceptions import FinSightError
 from finsight.common.logging import configure_logging, get_logger
 from finsight.common.runs import stage_run
 from finsight.models.lstm.data import WindowSet, load_price_series, make_windows, split_masks
+from finsight.models.lstm.explain import attribution_figure, occlusion_attribution
 from finsight.models.lstm.metrics import compare_to_baselines
 from finsight.models.lstm.pyfunc_model import input_columns
 
@@ -112,6 +115,22 @@ def run_evaluation(params: dict[str, Any], prices_path: Path, root: Path) -> dic
     fig = forecast_figure(test, pred)
     fig.savefig(plots / "lstm_test_forecasts.png", dpi=110)
 
+    columns = input_columns(lookback)
+    attribution = occlusion_attribution(
+        lambda x: model.predict(pd.DataFrame(x, columns=columns)).to_numpy(),
+        test.x_raw,
+        test.y_raw,
+        int(params.get("attribution_block", 10)),
+    )
+    attribution.to_csv(plots / "lstm_input_attribution.csv", index=False)
+    attr_fig = attribution_figure(attribution)
+    latest = attribution.iloc[0]
+    older = attribution.iloc[1:]["mean_abs_change_pct"]
+    metrics["attribution_latest_block_pct"] = round(float(latest["mean_abs_change_pct"]), 4)
+    metrics["attribution_older_blocks_max_pct"] = (
+        round(float(older.max()), 4) if len(older) else 0.0
+    )
+
     with mlflow.start_run(run_id=run_info["run_id"]):
         flat = {
             "test_mape": metrics["model"]["mape"],
@@ -126,6 +145,14 @@ def run_evaluation(params: dict[str, Any], prices_path: Path, root: Path) -> dic
         mlflow.set_tags({"evaluated": "true", "beats_naive": str(metrics["beats_naive"]).lower()})
         mlflow.log_dict(result, "evaluation/test_metrics_full.json")
         mlflow.log_figure(fig, "plots/test_forecasts.png")
+        mlflow.log_figure(attr_fig, "plots/input_attribution.png")
+        mlflow.log_text(attribution.to_csv(index=False), "evaluation/input_attribution.csv")
+        mlflow.log_metrics(
+            {
+                "attribution_latest_block_pct": metrics["attribution_latest_block_pct"],
+                "attribution_older_blocks_max_pct": metrics["attribution_older_blocks_max_pct"],
+            }
+        )
     return metrics
 
 
@@ -134,7 +161,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     argparse.ArgumentParser(description="Evaluate the packaged LSTM").parse_args(argv)
     settings = get_settings()
     configure_logging("evaluate_lstm", settings.log_level, settings.root / "logs")
-    params = settings.section("lstm")
+    params = {
+        **settings.section("lstm"),
+        "attribution_block": settings.section("lstm_explain")["attribution_block"],
+    }
     prices_path = settings.root / settings.section("etl")["processed_prices_path"]
     try:
         from finsight.models.tracking import configure_tracking  # noqa: PLC0415

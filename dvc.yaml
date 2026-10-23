@@ -1,7 +1,11 @@
 # =========================================================================== #
 # FinSight CI pipeline (DVC DAG).  Run:  dvc repro      Visualise:  dvc dag
 #
-#   unit_tests ──► export ──► validate ──► process ──► train_lstm ──► evaluate_lstm
+#   unit_tests ──► export ──► validate ──► process ─┬─► train_lstm ──► evaluate_lstm
+#        │                                          ├─► optimize_portfolio
+#        │                                          └─► score_sentiment
+#        └──► evaluate_sentiment ◄── fetch_sentiment        ▲
+#                    └──────────────────────────────────────┘
 #
 # * unit_tests is the CI gate: if the suite fails, nothing downstream runs.
 # * export is always re-run (it reads the live MongoDB) but writes
@@ -10,8 +14,12 @@
 # * Outputs under data/ are cached by DVC (dvc push -> local remote);
 #   small JSON reports are committed to Git (cache: false). The compact ones
 #   (unit_tests, etl_metrics) are DVC metrics: `dvc metrics show`.
-# Stages grow day by day: train/evaluate (Day 3), sentiment + portfolio
-# (Day 4), register (Day 5).
+# * fetch_sentiment downloads the pinned model + labelled data once (DVC-cached;
+#   re-runs only if the pinned revisions change).
+# * Stages that publish results for the API (score_sentiment,
+#   optimize_portfolio) also upsert MongoDB; the DVC outputs stay the source
+#   of truth (after a Mongo reset: dvc repro -f score_sentiment optimize_portfolio).
+# Stages grow day by day: register + serving (Day 5).
 # =========================================================================== #
 
 stages:
@@ -76,7 +84,15 @@ stages:
     cmd: python -m finsight.models.lstm.train
     deps:
       - data/processed/prices
-      - src/finsight/models
+      # only the code that shapes the model (editing evaluate/explain/feature
+      # experiment code must not retrain it)
+      - src/finsight/models/tracking.py
+      - src/finsight/models/lstm/data.py
+      - src/finsight/models/lstm/network.py
+      - src/finsight/models/lstm/metrics.py
+      - src/finsight/models/lstm/pyfunc_model.py
+      - src/finsight/models/lstm/pyfunc_entry.py
+      - src/finsight/models/lstm/train.py
     params:
       - lstm
     outs:
@@ -94,11 +110,13 @@ stages:
       - data/processed/prices
       - src/finsight/models/lstm/evaluate.py
       - src/finsight/models/lstm/metrics.py
+      - src/finsight/models/lstm/explain.py
     params:
       - lstm.lookback
       - lstm.horizon
       - lstm.val_origins
       - lstm.test_origins
+      - lstm_explain.attribution_block
     metrics:
       - reports/lstm_metrics.json:  # held-out test: model vs naive vs drift
           cache: false
@@ -106,6 +124,91 @@ stages:
       - reports/plots/lstm_test_forecasts.png:
           cache: false
       - reports/plots/lstm_horizon_mape.csv:
+          cache: false
+      - reports/plots/lstm_input_attribution.csv:
+          cache: false
+
+  # ------------------------------------------------------------- Day 4 ----
+  fetch_sentiment:
+    cmd: python -m finsight.sentiment.fetch
+    deps:
+      - src/finsight/sentiment/fetch.py
+    params:
+      - sentiment.base_model
+      - sentiment.base_revision
+      - sentiment.phrasebank_repo
+      - sentiment.phrasebank_revision
+      - sentiment.phrasebank_agreement
+    outs:
+      - models/sentiment/base               # ~268 MB, DVC-cached (works offline after)
+      - data/external/financial_phrasebank.csv
+
+  evaluate_sentiment:
+    cmd: python -m finsight.sentiment.evaluate
+    deps:
+      - reports/unit_tests.json             # CI gate
+      - models/sentiment/base
+      - data/external/financial_phrasebank.csv
+      - src/finsight/sentiment/scoring.py
+      - src/finsight/sentiment/evaluate.py
+      - src/finsight/sentiment/pyfunc_model.py
+      - src/finsight/sentiment/pyfunc_entry.py
+      - src/finsight/models/tracking.py
+    params:
+      - sentiment.calibration_share
+      - sentiment.seed
+      - sentiment.max_length
+    outs:
+      - models/sentiment/model              # pyfunc: weights + tokenizer + calibrated band
+      - models/sentiment/run.json           # MLflow run ID + model version (also in sentiment_eval.json)
+      - reports/plots/sentiment_neutral_band.csv:
+          cache: false
+      - reports/plots/sentiment_confusion.png:
+          cache: false
+    metrics:
+      - reports/sentiment_eval.json:        # PhraseBank test half vs majority baseline
+          cache: false
+
+  score_sentiment:
+    cmd: python -m finsight.sentiment.score
+    deps:
+      - data/processed/news
+      - models/sentiment/model
+      - models/sentiment/run.json
+      - src/finsight/sentiment/score.py
+      - src/finsight/sentiment/scoring.py
+    params:
+      - sentiment.top_headlines
+    outs:
+      - data/sentiment/article_scores.parquet:
+          persist: true                     # incremental cache: kept between runs
+      - data/sentiment/weekly.parquet
+    metrics:
+      - reports/sentiment_scoring.json:
+          cache: false
+
+  optimize_portfolio:
+    cmd: python -m finsight.portfolio.optimize
+    deps:
+      - data/processed/prices
+      - src/finsight/portfolio
+    params:
+      - portfolio
+    metrics:
+      - reports/portfolio.json:             # today's allocation + in/out-of-sample Sharpe
+          cache: false
+    outs:
+      - reports/portfolio_backtest.json:
+          cache: false
+      - reports/plots/portfolio_frontier.csv:
+          cache: false
+      - reports/plots/portfolio_backtest.csv:
+          cache: false
+      - reports/plots/portfolio_allocation.png:
+          cache: false
+      - reports/plots/portfolio_frontier.png:
+          cache: false
+      - reports/plots/portfolio_backtest.png:
           cache: false
 
 # `dvc plots show` renders these into dvc_plots/index.html
@@ -119,3 +222,24 @@ plots:
       y:
         reports/plots/lstm_horizon_mape.csv: [model_mape, naive_mape, drift_mape]
   - reports/plots/lstm_test_forecasts.png
+  - LSTM input attribution (occlusion; lag 1 = most recent day):
+      template: bar_horizontal
+      x: mean_abs_change_pct
+      y:
+        reports/plots/lstm_input_attribution.csv: block
+  - Sentiment neutral-band calibration (calibration half):
+      x: band
+      y:
+        reports/plots/sentiment_neutral_band.csv: [macro_f1, accuracy, neutral_share]
+  - reports/plots/sentiment_confusion.png
+  - Portfolio walk-forward backtest (growth of $1, out of sample):
+      x: date
+      y:
+        reports/plots/portfolio_backtest.csv: [max_sharpe, equal_weight, min_volatility]
+  - Portfolio grid (annualised, last window):
+      template: scatter
+      x: volatility
+      y:
+        reports/plots/portfolio_frontier.csv: expected_return
+  - reports/plots/portfolio_allocation.png
+  - reports/plots/portfolio_frontier.png

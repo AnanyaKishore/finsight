@@ -56,6 +56,9 @@ class WindowSet:
     origins: np.ndarray  # (N,) date of the last input day
     position: np.ndarray  # (N,) origin index within its ticker (0 = oldest)
     n_per_ticker: dict[str, int]
+    # Optional extra input channels (N, lookback, k), e.g. rolling volatility in
+    # the feature experiment; each is MinMax-scaled per window like the price.
+    x_extra: np.ndarray | None = None
 
     def __len__(self) -> int:
         return len(self.x_raw)
@@ -69,13 +72,22 @@ class WindowSet:
             self.origins[mask],
             self.position[mask],
             self.n_per_ticker,
+            None if self.x_extra is None else self.x_extra[mask],
         )
 
     def scaled(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Model inputs/targets: ``(x[N, L, 1], y[N, H], lo, hi)`` in window units."""
+        """Model inputs/targets: ``(x[N, L, C], y[N, H], lo, hi)`` in window units.
+
+        ``C = 1`` (price only) unless :attr:`x_extra` is set; ``lo``/``hi`` are
+        always the *price* scaling factors, used to map forecasts back to USD.
+        """
         x, lo, hi = scale_rows(self.x_raw)
         y = (self.y_raw - lo[:, None]) / (hi - lo)[:, None]
-        return x[:, :, None].astype(np.float32), y.astype(np.float32), lo, hi
+        channels = [x[:, :, None]]
+        if self.x_extra is not None:
+            for k in range(self.x_extra.shape[2]):
+                channels.append(scale_rows(self.x_extra[:, :, k])[0][:, :, None])
+        return np.concatenate(channels, axis=2).astype(np.float32), y.astype(np.float32), lo, hi
 
     @property
     def last_price(self) -> np.ndarray:

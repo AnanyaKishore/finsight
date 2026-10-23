@@ -1,0 +1,13 @@
+{
+  "model_version": "714eb0fa89d2-band0.9928-len256",
+  "articles": 11015,
+  "scored_this_run": 11015,
+  "reused_from_cache": 0,
+  "scoring_seconds": 585.31,
+  "throughput_articles_per_s": 18.8,
+  "weeks": 265,
+  "mean_score": -0.2048,
+  "share_positive": 0.1268,
+  "share_negative": 0.2172,
+  "share_neutral": 0.6559
+}

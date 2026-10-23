@@ -1,90 +1,174 @@
 {
-  "run_id": "7c2b9aaa47bb",
+  "run_id": "2a057090deb2",
   "mode": "incremental",
-  "started_at": "2026-10-22 11:15:51.021149+00:00",
+  "started_at": "2026-10-23 09:46:42.914788+00:00",
   "pipeline": "ingestion",
   "status": "success",
-  "finished_at": "2026-10-22 11:16:04.088616+00:00",
-  "duration_s": 13.067,
+  "finished_at": "2026-10-23 09:47:02.861711+00:00",
+  "duration_s": 19.947,
   "prices": {
-    "fetched": 0,
-    "inserted": 0,
+    "fetched": 10,
+    "inserted": 10,
     "updated": 0,
-    "per_ticker": {}
+    "per_ticker": {
+      "AAPL": {
+        "from": "2026-10-22",
+        "to": "2026-10-22",
+        "provider": "marketstack",
+        "rows": 1,
+        "inserted": 1,
+        "updated": 0
+      },
+      "MSFT": {
+        "from": "2026-10-22",
+        "to": "2026-10-22",
+        "provider": "marketstack",
+        "rows": 1,
+        "inserted": 1,
+        "updated": 0
+      },
+      "GOOGL": {
+        "from": "2026-10-22",
+        "to": "2026-10-22",
+        "provider": "marketstack",
+        "rows": 1,
+        "inserted": 1,
+        "updated": 0
+      },
+      "AMZN": {
+        "from": "2026-10-22",
+        "to": "2026-10-22",
+        "provider": "marketstack",
+        "rows": 1,
+        "inserted": 1,
+        "updated": 0
+      },
+      "TSLA": {
+        "from": "2026-10-22",
+        "to": "2026-10-22",
+        "provider": "marketstack",
+        "rows": 1,
+        "inserted": 1,
+        "updated": 0
+      },
+      "NVDA": {
+        "from": "2026-10-22",
+        "to": "2026-10-22",
+        "provider": "marketstack",
+        "rows": 1,
+        "inserted": 1,
+        "updated": 0
+      },
+      "META": {
+        "from": "2026-10-22",
+        "to": "2026-10-22",
+        "provider": "marketstack",
+        "rows": 1,
+        "inserted": 1,
+        "updated": 0
+      },
+      "JPM": {
+        "from": "2026-10-22",
+        "to": "2026-10-22",
+        "provider": "marketstack",
+        "rows": 1,
+        "inserted": 1,
+        "updated": 0
+      },
+      "WMT": {
+        "from": "2026-10-22",
+        "to": "2026-10-22",
+        "provider": "marketstack",
+        "rows": 1,
+        "inserted": 1,
+        "updated": 0
+      },
+      "V": {
+        "from": "2026-10-22",
+        "to": "2026-10-22",
+        "provider": "marketstack",
+        "rows": 1,
+        "inserted": 1,
+        "updated": 0
+      }
+    }
   },
   "news": {
-    "fetched": 147,
-    "inserted": 112,
+    "fetched": 353,
+    "inserted": 306,
     "updated": 0,
     "per_ticker": {
       "AAPL": {
         "windows": 1,
-        "rows": 2,
-        "inserted": 1,
+        "rows": 39,
+        "inserted": 37,
         "errors": 0
       },
       "MSFT": {
         "windows": 1,
-        "rows": 6,
-        "inserted": 5,
+        "rows": 40,
+        "inserted": 35,
         "errors": 0
       },
       "GOOGL": {
         "windows": 1,
-        "rows": 9,
-        "inserted": 8,
+        "rows": 40,
+        "inserted": 36,
         "errors": 0
       },
       "AMZN": {
         "windows": 1,
-        "rows": 11,
-        "inserted": 9,
+        "rows": 40,
+        "inserted": 34,
         "errors": 0
       },
       "TSLA": {
         "windows": 1,
-        "rows": 29,
-        "inserted": 24,
+        "rows": 40,
+        "inserted": 33,
         "errors": 0
       },
       "NVDA": {
         "windows": 1,
         "rows": 40,
-        "inserted": 38,
+        "inserted": 32,
         "errors": 0
       },
       "META": {
         "windows": 1,
-        "rows": 30,
-        "inserted": 25,
+        "rows": 40,
+        "inserted": 33,
         "errors": 0
       },
       "JPM": {
         "windows": 1,
-        "rows": 14,
-        "inserted": 2,
+        "rows": 24,
+        "inserted": 22,
         "errors": 0
       },
       "WMT": {
         "windows": 1,
-        "rows": 2,
-        "inserted": 0,
+        "rows": 22,
+        "inserted": 20,
         "errors": 0
       },
       "V": {
         "windows": 1,
-        "rows": 4,
-        "inserted": 0,
+        "rows": 28,
+        "inserted": 24,
         "errors": 0
       }
     }
   },
   "api_calls": {
+    "marketstack": 10,
     "finnhub": 10
   },
-  "provider_rows": {},
+  "provider_rows": {
+    "marketstack": 10
+  },
   "errors": [],
-  "tasks_ok": 10,
+  "tasks_ok": 20,
   "tasks_skipped": 0,
-  "throughput_rows_per_s": 11.25
+  "throughput_rows_per_s": 18.2
 }

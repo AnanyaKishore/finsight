@@ -20,18 +20,25 @@ from finsight.common.timeutils import to_utc_midnight
 from finsight.ingestion.models import NewsArticle, PriceBar
 from finsight.ingestion.providers.base import NewsProvider, PriceProvider
 
+
 # --------------------------------------------------------------------------- #
 # Test-only compatibility shim: pymongo >= 4.11 passes ``sort=`` to the bulk
-# builder's add_update(), which mongomock 4.3 does not accept yet. Production
-# code runs against real MongoDB and is unaffected.
+# builder's add_update() / add_replace(), which mongomock 4.3 does not accept
+# yet. Production code runs against real MongoDB and is unaffected.
 # --------------------------------------------------------------------------- #
-_original_add_update = mongomock.collection.BulkOperationBuilder.add_update
-if "sort" not in inspect.signature(_original_add_update).parameters:
+def _drop_sort_kwarg(name: str) -> None:
+    original = getattr(mongomock.collection.BulkOperationBuilder, name)
+    if "sort" in inspect.signature(original).parameters:
+        return
 
-    def _add_update(self, *args, sort=None, **kwargs):  # noqa: ARG001
-        return _original_add_update(self, *args, **kwargs)
+    def patched(self, *args, sort=None, **kwargs):  # noqa: ARG001
+        return original(self, *args, **kwargs)
 
-    mongomock.collection.BulkOperationBuilder.add_update = _add_update
+    setattr(mongomock.collection.BulkOperationBuilder, name, patched)
+
+
+for _method in ("add_update", "add_replace"):
+    _drop_sort_kwarg(_method)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 

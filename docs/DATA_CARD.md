@@ -12,6 +12,8 @@ characteristics** come from `notebooks/01_eda.ipynb` (section 9) and
 | End-of-day prices | MarketStack (primary) | `GET /v2/eod` | open, high, low, close, adj_close, volume | daily, gap-fill | free plan, 100 req/month |
 | End-of-day prices | Yahoo Finance via `yfinance` (fallback) | unofficial | same | only when MarketStack is over quota / failing | unofficial; personal / academic use |
 | Company news | Finnhub | `GET /company-news` | id, datetime, headline, summary, source, url, category | daily, gap-fill | free plan, 60 calls/min |
+| Labelled financial sentences (evaluation only) | Financial PhraseBank v1.0 (Malo et al., 2014) via Hugging Face `takala/financial_phrasebank@8d3fe0c3` | raw ZIP, `Sentences_AllAgree.txt` | sentence, label (positive / negative / neutral) | fixed (pinned commit) | CC BY-NC-SA 3.0 (non-commercial; academic use) |
+| Pretrained model | `distilbert/distilbert-base-uncased-finetuned-sst-2-english@714eb0fa` | Hugging Face Hub | weights, tokenizer | fixed (pinned commit) | Apache-2.0 |
 
 Universe: 10 large-cap US equities fixed in `configs/tickers.yaml`
 (AAPL, MSFT, GOOGL, AMZN, TSLA, NVDA, META, JPM, WMT, V).
@@ -23,6 +25,9 @@ providers ──► MongoDB (prices, news)            operational store, idempot
           ──► data/raw/*.parquet                 `export` stage, DVC-versioned snapshot
           ──► reports/data_quality.json          `validate` stage, expectation suite
           ──► data/processed/{prices,news,news_weekly}/   `process` stage (Spark)
+          ──► data/sentiment/{article_scores,weekly}.parquet `score_sentiment` ──► MongoDB news_sentiment, sentiment_weekly
+          ──► reports/portfolio*.json            `optimize_portfolio` ──► MongoDB portfolios
+Hugging Face Hub ──► models/sentiment/base, data/external/financial_phrasebank.csv   `fetch_sentiment` (once)
 ```
 
 * Every price row carries `source` (`marketstack` | `yfinance`); every article carries `provider`.
@@ -59,15 +64,34 @@ Raw columns plus: `price` (model price, see §5), `is_filled`, `fill_gap`, `log_
 Cleaned articles with `week_start` (Monday, UTC); weekly `article_count`,
 `distinct_sources`, first/last publication time.
 
+### `data/external/financial_phrasebank.csv` (evaluation only)
+`id`, `sentence`, `label` (positive / negative / neutral), `agreement` (`AllAgree`).
+2,264 sentences: 1,391 neutral, 570 positive, 303 negative (100 % annotator agreement).
+
+### `data/sentiment/article_scores.parquet` (one row per cleaned article)
+News fields plus `text_sha1`, `model_version` (base commit + neutral band + max length),
+`score` = p(positive) − p(negative) ∈ [−1, 1], `confidence` = max(p) ∈ [0.5, 1],
+`label` (positive / negative / neutral, neutral if |score| < calibrated band).
+
+### `data/sentiment/weekly.parquet` / MongoDB `sentiment_weekly` (one row per ticker × week)
+`article_count`, `mean_score`, `positive` / `negative` / `neutral` counts,
+`top_positive` / `top_negative` (≤ 3 headlines each with score, source, url: the explanation).
+
+### MongoDB `portfolios` (one document per `as_of` trading day)
+Selected allocation (weights, expected return, volatility, Sharpe, method), in-sample
+comparison with equal weight and min volatility, SciPy check, walk-forward performance, MLflow run ID.
+
 ## 4. Known limitations and potential biases
 
 | # | Issue | Effect | Mitigation |
 |---|---|---|---|
 | B1 | **Survivorship / selection bias**: the universe is today's mega-caps, chosen with hindsight. | Back-tested returns and Sharpe ratios look better than a forward-looking investor would have achieved. | Stated in the UI disclaimer; portfolio compared with an equal-weight baseline on the *same* universe. |
-| B2 | **Missing or invalid bars** in the free MarketStack feed: 2–3 missing trading days per ticker, and `close = 0` (with normal volume) for META on 2026-04-07, 2026-04-08 and 2026-06-04. | Gaps distort returns and LSTM windows; a zero price produces infinite returns. | `validate` blocked the pipeline on the zero prices; the bars were re-fetched from yfinance with `ingestion repair` (run record `mode: repair`), and the parser now rejects close ≤ 0. Gaps ≤ 2 days are forward-filled and flagged `is_filled`. |
+| B2 | **Missing trading days** in the free MarketStack feed. | Gaps distort returns and LSTM windows. | Detected by `validate` (per-ticker dates listed); ≤ 2 consecutive days forward-filled and flagged `is_filled`; longer gaps excluded. |
 | B3 | **News sampling cap** (`ingestion.max_articles_per_window` = 40 per ticker-week), spread evenly through the week. | Busy weeks are under-sampled, so article counts saturate at 40 and weekly sentiment is an estimate. | Cap documented; the chart shows the sampled count. |
-| B4 | **News source mix and syndication**: whatever Finnhub aggregates (7 sources); the same story often appears under several IDs. | Sentiment reflects that editorial mix, and duplicates would over-weight syndicated stories. | Top sources reported in the EDA; the ETL removes duplicates by normalised headline (156 removed in this snapshot). |
-| B5 | **Domain mismatch of the sentiment model** (DistilBERT fine-tuned on SST-2 movie reviews). | Financial language ("beats estimates", "cuts guidance") may be misread; no neutral class. | Measured on a labelled financial-news sample on Day 4 (accuracy, F1). |
+| B4 | **News source mix** is whatever Finnhub aggregates (wire services, Yahoo, MarketWatch …). | Sentiment reflects that editorial mix, not "the market". | Top sources reported in the EDA. |
+| B5 | **Domain mismatch of the sentiment model** (DistilBERT fine-tuned on SST-2 movie reviews). | Financial language ("beats estimates", "cuts guidance") may be misread; no neutral class. | Measured on Financial PhraseBank (`reports/sentiment_eval.json`: binary and 3-class accuracy / macro-F1 vs majority baseline); neutral band calibrated on a separate half; most confident errors logged to MLflow. |
+| B10 | **Evaluation-set bias**: PhraseBank (AllAgree) holds short, unambiguous English sentences from news about Finnish listed companies (published 2014), not 2026 US headlines plus summaries. | Measured accuracy is an *optimistic* estimate for our articles. | Stated in the report; the band is calibrated on the same distribution it is tested on (separate halves); AllAgree chosen so labels are reliable. |
+| B11 | **30-day estimation window** for the portfolio (proposal). | Mean returns over 30 days are extremely noisy; in-sample Sharpe ratios of 3–6 are common and do not persist. | Walk-forward out-of-sample comparison with equal weight and min volatility is reported next to every allocation. |
 | B6 | **Mixed providers** after fallback (MarketStack vs Yahoo adjusted closes can differ slightly). | Small artificial jumps at the switch. | `source` lineage + provider-mix check; model price rule (§5). |
 | B7 | **Unadjusted corporate actions** after the backfill (a split stored by incremental runs). | A −50 % / −75 % "return" corrupts training. | `prices.no_extreme_returns` is a *blocking* check; remedy: `ingestion backfill --prices-only` refreshes adjusted history. |
 | B8 | **Non-stationarity**: volatility regimes change over the year. | A model trained once decays (the proposal's core problem). | Drift monitoring and retraining (Day 8); EDA §6 quantifies it. |
@@ -78,19 +102,20 @@ Cleaned articles with `week_start` (Monday, UTC); weekly `article_count`,
 * **Model price**: per ticker, `adj_close` if every bar has it, otherwise `close` (never mixed within a series).
 * **Calendar**: NYSE trading days from `finsight.common.timeutils` (weekends + full-day holidays).
 * **De-duplication**: prices by (ticker, date) at ingestion; news by (ticker, news_id) and by normalised headline in the ETL.
+* **Sentiment input**: `text` (headline + summary, ≤ 1,000 chars), whitespace-collapsed, truncated to 256 tokens.
+* **Portfolio input**: simple daily returns of `price` over the last 30 aligned trading days (dates missing for any ticker dropped), annualised ×252.
 * **Quality gate**: blocking expectations — schema, required nulls, unique keys, positive prices, universe complete, ≥ 114 rows per ticker (100-day lookback + 14-day horizon), ≤ 10 missing days, no |log return| > 0.5.
 
-## 6. Observed characteristics
+## 6. Observed characteristics (fill in from the EDA notebook, section 9)
 
-Snapshot: `reports/export_manifest.json` sha256 prices = `9200f049c246163a1b7dfd148af0121160ec753ac216ca12909d64546cd0117e` (22 Oct 2026)
+Snapshot: `reports/export_manifest.json` sha256 prices = `________`
 
-- Snapshot: 2025-10-21 to 2026-10-21, 2,492 price rows, 10,756 articles, 10 tickers.
-- Missing trading days per ticker: min 2, max 3 (total 28); all gaps ≤ 2 consecutive days, so all 28 were forward-filled (2,520 rows after alignment = 10 × 252 trading days).
-- Price provider mix: 2,489 MarketStack, 3 yfinance (repaired bars, see B2).
-- Annualised volatility range: 22.0% (V) to 45.2% (TSLA).
-- Return kurtosis range: 3.6 to 14.2 (normal = 3): every ticker has fat tails, which justifies the robust (median/MAD) outlier rule.
-- Mean pairwise return correlation: 0.16 (low; diversification is possible).
-- Largest daily move: TSLA −15.7% on 2026-07-23 (real move; flagged as an outlier warning, not blocked).
-- Volatility regime shift (2nd half / 1st half): 0.81× to 1.27× (non-stationarity, see B8).
-- News: 39.8 articles per ticker-week on average against a cap of 40, so the cap is active almost every week (see B3); 7 distinct sources; 156 syndicated duplicate headlines removed by the ETL.
-- Data-quality warnings (non-blocking): 14 OHLC-inconsistent bars (high/low outside the open–close range; only close is used for modelling), 7 return outliers.
+- Snapshot window / rows / articles: …
+- Missing trading days per ticker: …
+- Price provider mix: …
+- Annualised volatility range: …
+- Return kurtosis range: …
+- Mean pairwise return correlation: …
+- Largest daily move: …
+- Volatility regime shift (2nd half / 1st half): …
+- News articles per ticker-week (mean) and distinct sources: …
