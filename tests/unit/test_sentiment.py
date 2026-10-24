@@ -183,8 +183,12 @@ def test_evaluate_scores_against_majority_baselines():
     assert result["binary_majority_baseline"]["predicts"] == "positive"
     assert result["three_class"]["macro_f1"] > result["three_class_majority_baseline"]["macro_f1"]
     assert result["three_class_majority_baseline"]["predicts"] == "neutral"
-    compact = ev.compact(result, {"latency_p50_ms": 1.0, "latency_p95_ms": 2.0}, "rid")
-    assert compact["beats_baseline_macro_f1"] is True and compact["run_id"] == "rid"
+    perf = {"latency_p50_ms": 1.0, "latency_p95_ms": 2.0, "throughput_texts_per_s": 9.0}
+    other, _ = ev.evaluate_scores(_scored_phrasebank(), 0.5, seed=7)
+    compact = ev.compact({"gate": result, "pb": other}, perf, "rid", "cand", "gate", ["pb"])
+    assert compact["beats_baseline"] is True and compact["run_id"] == "rid"
+    assert compact["gate_macro_f1"] == round(result["three_class"]["macro_f1"], 4)
+    assert compact["pb_contaminated"] is True and "pb_macro_f1" in compact
 
 
 def test_evaluate_scores_needs_both_polarities():
@@ -282,69 +286,88 @@ def test_publish_is_idempotent_and_removes_stale(db, tmp_path):
 
 
 # -------------------------------------------------- packaging + stage chain
-SENT_PARAMS = {
-    "base_model": "tiny/distilbert",
-    "base_revision": "0123456789abcdef0123456789abcdef01234567",
-    "base_dir": "models/sentiment/base",
-    "phrasebank_repo": "tiny/phrasebank",
-    "phrasebank_revision": "fedcba",
-    "phrasebank_agreement": "AllAgree",
-    "phrasebank_path": "data/external/financial_phrasebank.csv",
-    "calibration_share": 0.5,
-    "seed": 42,
-    "max_length": 32,
-    "batch_size": 8,
-    "torch_threads": 1,
-    "top_headlines": 2,
-    "experiment_name": "test-sentiment",
-    "model_dir": "models/sentiment",
-    "scores_path": "data/sentiment/article_scores.parquet",
-    "weekly_path": "data/sentiment/weekly.parquet",
-}
-
-
-@pytest.fixture
-def sentiment_project(tmp_path, monkeypatch):
-    mlflow = pytest.importorskip("mlflow")
+def test_three_label_model_scores_and_confidence(tmp_path):
     pytest.importorskip("transformers")
-    from tests.conftest import PROJECT_ROOT
+    from finsight.sentiment.scoring import SentimentScorer
 
-    make_tiny_sentiment_model(tmp_path / SENT_PARAMS["base_dir"])
-    pb = tmp_path / SENT_PARAMS["phrasebank_path"]
-    pb.parent.mkdir(parents=True)
-    make_phrasebank().to_csv(pb, index=False)
-    (tmp_path / "src").symlink_to(PROJECT_ROOT / "src")
-    monkeypatch.chdir(tmp_path)
-    mlflow.set_tracking_uri(f"sqlite:///{tmp_path / 'mlflow.db'}")
-    mlflow.create_experiment("test-sentiment", artifact_location=(tmp_path / "art").as_uri())
-    mlflow.set_experiment("test-sentiment")
-    yield tmp_path, mlflow
-    mlflow.set_tracking_uri("")
+    path = make_tiny_sentiment_model(tmp_path / "fin", labels=("positive", "negative", "neutral"))
+    scorer = SentimentScorer(path, max_length=32, batch_size=4, threads=1)
+    texts = ["profit rose", "loss fell", "the company reports results"]
+    probs = scorer.probability_matrix(texts)
+    scores, confidence = scorer.score_and_confidence(texts)
+    assert scorer.n_labels == 3 and np.allclose(probs.sum(axis=1), 1)
+    assert np.allclose(scores, probs[:, 0] - probs[:, 1], atol=1e-6)  # pos - neg
+    assert np.allclose(confidence, probs.max(axis=1), atol=1e-6)
+    assert (confidence >= 1 / 3 - 1e-9).all()
 
 
-def test_evaluate_packages_a_working_pyfunc_and_scoring_uses_it(sentiment_project):
-    root, mlflow = sentiment_project
-    outcome = ev.run_evaluation(SENT_PARAMS, root)
-    info = json.loads((root / "models/sentiment/run.json").read_text())
+def test_parse_twitter_maps_labels_and_strips_urls():
+    raw = pd.DataFrame(
+        {
+            "text": ["$AAPL beats https://t.co/abc", "Stocks fall", "Fed meets", "Fed meets"],
+            "label": [1, 0, 2, 2],
+        }
+    )
+    out = fetch.parse_twitter(raw)
+    assert out["label"].tolist() == ["positive", "negative", "neutral"]  # duplicate dropped
+    assert out["sentence"].iloc[0] == "$AAPL beats" and list(out.columns) == [
+        "id",
+        "sentence",
+        "label",
+    ]
+    with pytest.raises(FinSightError):
+        fetch.parse_twitter(raw.assign(label=[1, 0, 2, 5]))
+
+
+def test_load_cache_backfills_confidence_for_day4_caches(tmp_path):
+    old = pd.DataFrame(
+        {
+            "ticker": ["A"],
+            "news_id": ["1"],
+            "text_sha1": ["x"],
+            "model_version": ["v"],
+            "score": [-0.6],
+        }
+    )
+    old.to_parquet(tmp_path / "c.parquet")
+    cache = sc.load_cache(tmp_path / "c.parquet")
+    assert cache["confidence"].iloc[0] == pytest.approx(0.8)
+
+
+def test_scoring_uses_the_production_candidate(sentiment_project):
+    root, mlflow, params = sentiment_project
+    outcome = ev.run_evaluation(params, "tiny_a", root)
+    info = json.loads((root / "models/sentiment/candidates/tiny_a/run.json").read_text())
     assert info["model_version"].startswith("0123456789ab-band")
+    assert info["eval_fingerprint"].startswith("gate@aaaa")
     run = mlflow.get_run(info["run_id"])
-    assert run.data.params["n_sentences"] == "100" and "git_commit" in run.data.tags
-    assert "binary_macro_f1" in run.data.metrics and "latency_p95_ms" in run.data.metrics
-    assert len(outcome["curve"]) > 1
+    assert run.data.params["n_gate"] == "100" and "git_commit" in run.data.tags
+    assert run.data.tags["candidate"] == "tiny_a"
+    assert "gate_macro_f1" in run.data.metrics and "latency_p95_ms" in run.data.metrics
+    assert outcome["metrics"]["pb_contaminated"] is False
+    assert set(outcome["curves"]) == {"gate", "pb"}
 
-    # Saved model is clean (loading it later writes bytecode; .dvcignore skips that).
-    assert not list((root / "models/sentiment/model").rglob("__pycache__"))
-    model = mlflow.pyfunc.load_model(str(root / "models/sentiment/model"))
+    model_dir = root / "models/sentiment/candidates/tiny_a/model"
+    assert not list(model_dir.rglob("__pycache__"))  # clean before anything loads it
+    model = mlflow.pyfunc.load_model(str(model_dir))
     out = model.predict(pd.DataFrame({"text": ["profit rose", "loss fell", ""]}))
     assert list(out.columns) == ["label", "confidence", "score"]
     assert set(out["label"]) <= {"positive", "negative", "neutral"}
     assert out["confidence"].between(0.5, 1.0).all() and out["score"].abs().le(1).all()
 
+    production = {
+        "candidate": "tiny_a",
+        "run_id": info["run_id"],
+        "version": "1",
+        "model_version": info["model_version"],
+        "neutral_band": info["neutral_band"],
+        "path": model_dir,
+    }
     news_dir = _write_news(root)
-    first = sc.run_scoring(SENT_PARAMS, news_dir, root)
+    first = sc.run_scoring(params, news_dir, root, production=production)
     assert first["report"]["scored_this_run"] == first["report"]["articles"]
-    second = sc.run_scoring(SENT_PARAMS, news_dir, root)
+    assert first["report"]["candidate"] == "tiny_a"
+    second = sc.run_scoring(params, news_dir, root, production=production)
     assert second["report"]["scored_this_run"] == 0  # everything reused from the cache
     pd.testing.assert_frame_equal(first["scored"], second["scored"])
-    assert (root / SENT_PARAMS["weekly_path"]).exists()
     assert first["scored"]["week_start"].iloc[0] <= date(2026, 8, 31)

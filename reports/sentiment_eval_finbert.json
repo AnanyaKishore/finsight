@@ -1,0 +1,21 @@
+{
+  "run_id": "62e3fec1e294432397cef64d28a170af",
+  "candidate": "finbert",
+  "gate_dataset": "twitter_financial_news",
+  "n_test": 1189,
+  "neutral_band": 0.7484,
+  "gate_macro_f1": 0.6575,
+  "gate_accuracy": 0.7536,
+  "gate_baseline_macro_f1": 0.2639,
+  "gate_baseline_accuracy": 0.6552,
+  "gate_binary_accuracy": 0.8512,
+  "gate_binary_macro_f1": 0.8497,
+  "gate_binary_baseline_accuracy": 0.578,
+  "beats_baseline": true,
+  "financial_phrasebank_macro_f1": 0.9672,
+  "financial_phrasebank_binary_accuracy": 0.9862,
+  "financial_phrasebank_contaminated": true,
+  "latency_p50_ms": 42.21,
+  "latency_p95_ms": 51.03,
+  "throughput_texts_per_s": 23.1
+}

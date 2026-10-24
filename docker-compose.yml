@@ -5,8 +5,11 @@
 #   mongo      self-hosted MongoDB (prices, news, run records, API quota ledger)
 #   mlflow     MLflow tracking server + model registry      (Day 3)
 #   ingestion  one-shot job container (MarketStack prices + Finnhub news)
-# Later days add: lstm-serve, sentiment-serve, backend, frontend,
-# scheduler, prometheus, alertmanager, grafana, node-exporter, mongodb-exporter.
+#   lstm-serve       MLflow model server: models:/finsight-lstm@production       (Day 5)
+#   sentiment-serve  MLflow model server: models:/finsight-sentiment@production  (Day 5)
+#   backend          FastAPI REST API + Prometheus /metrics                      (Day 5)
+# Later days add: frontend, scheduler, prometheus, alertmanager, grafana,
+# node-exporter, mongodb-exporter.
 #
 # Memory budget (8 GB laptop): every service gets an explicit mem_limit so the
 # full stack stays under ~5 GB. See docs/PROJECT_PLAN.md, "Resource budget".
@@ -98,6 +101,88 @@ services:
       mongo:
         condition: service_healthy
     mem_limit: 512m
+    networks: [finsight]
+
+  # ------------------------------------------------------------- Day 5 ----
+  lstm-serve:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.serve
+    image: finsight/serve:${FINSIGHT_VERSION:-dev}
+    container_name: finsight-lstm-serve
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Asia/Kolkata}
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MODEL_URI: models:/finsight-lstm@production   # restart after a promotion/rollback
+      PORT: "5001"
+    ports:
+      - "127.0.0.1:5001:5001"     # localhost only (debugging); the backend uses the network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/ping', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s           # downloads the model from the registry first
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    # Measured (rehearsal): `mlflow models serve` = launcher (~250 MB) + uvicorn
+    # worker with torch + model (~650 MB) -> ~0.9 GB.
+    mem_limit: 1g
+    networks: [finsight]
+
+  sentiment-serve:
+    build:                        # same image as lstm-serve (second build is a cache hit)
+      context: .
+      dockerfile: docker/Dockerfile.serve
+    image: finsight/serve:${FINSIGHT_VERSION:-dev}
+    container_name: finsight-sentiment-serve
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Asia/Kolkata}
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MODEL_URI: models:/finsight-sentiment@production
+      PORT: "5002"
+    ports:
+      - "127.0.0.1:5002:5002"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5002/ping', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 120s          # ~270-440 MB model download + load
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    # launcher ~250 MB + worker: ~1.4 GB with DistilBERT, ~1.6 GB with FinBERT.
+    # Stop it during heavy pipeline runs if memory is tight (the API degrades).
+    mem_limit: 2g
+    networks: [finsight]
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    image: finsight/backend:${FINSIGHT_VERSION:-dev}
+    container_name: finsight-backend
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_HTTP_REQUEST_MAX_RETRIES: "0"   # registry down -> answer fast, degraded
+      MLFLOW_HTTP_REQUEST_TIMEOUT: "5"
+      LSTM_SERVE_URL: http://lstm-serve:5001
+      SENTIMENT_SERVE_URL: http://sentiment-serve:5002
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:8080}
+    ports:
+      - "127.0.0.1:8000:8000"     # API + docs at http://localhost:8000/docs
+    depends_on:
+      mongo:
+        condition: service_healthy
+      # Not waiting for the model servers on purpose: the API starts and
+      # reports "degraded" until they are up (graceful degradation).
+    mem_limit: 384m
     networks: [finsight]
 
 volumes:

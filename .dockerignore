@@ -1,0 +1,23 @@
+# Keep the Docker build context small and free of secrets.
+# Images copy only src/, configs/, params.yaml and requirements/.
+.env
+.env.*
+!.env.example
+secrets/
+.git/
+.dvc/cache/
+.dvc/tmp/
+data/
+models/
+mlruns/
+logs/
+reports/
+dvc_plots/
+notebooks/
+images/
+docs/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/

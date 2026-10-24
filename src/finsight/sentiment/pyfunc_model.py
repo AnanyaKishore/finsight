@@ -4,7 +4,7 @@ Contract (recorded as the MLflow model *signature*):
 
 * input  -- DataFrame with one string column ``text`` (headline + summary).
 * output -- DataFrame with ``label`` (positive / negative / neutral),
-  ``confidence`` (probability of the predicted binary class, 0.5-1.0) and
+  ``confidence`` (probability of the most likely class) and
   ``score`` (``p_pos - p_neg``, -1..+1).
 
 The calibrated neutral band, truncation length and batch size are stored in
@@ -18,10 +18,9 @@ import json
 from typing import Any
 
 import mlflow.pyfunc
-import numpy as np
 import pandas as pd
 
-from finsight.sentiment.scoring import SentimentScorer, labels_for, scores_from_probabilities
+from finsight.sentiment.scoring import SentimentScorer, labels_for
 
 OUTPUT_COLUMNS = ["label", "confidence", "score"]
 
@@ -48,12 +47,11 @@ class SentimentPyfunc(mlflow.pyfunc.PythonModel):
         """
         if "text" not in model_input.columns:
             raise ValueError("input must have a 'text' column")
-        p_neg, p_pos = self.scorer.probabilities(model_input["text"].tolist())
-        scores = np.round(scores_from_probabilities(p_neg, p_pos), 6)
+        scores, confidence = self.scorer.score_and_confidence(model_input["text"].tolist())
         return pd.DataFrame(
             {
                 "label": labels_for(scores, float(self.config["neutral_band"])).astype(str),
-                "confidence": np.round(np.maximum(p_neg, p_pos), 6),
+                "confidence": confidence,
                 "score": scores,
             },
             index=model_input.index,

@@ -1,0 +1,37 @@
+# --------------------------------------------------------------------------- #
+# FinSight model-serving image: `mlflow models serve` for registered pyfunc
+# models. One image, two services (compose): lstm-serve and sentiment-serve.
+#
+# The model to serve is a registry URI chosen at run time, e.g.
+#   models:/finsight-lstm@production
+# so promoting or rolling back a model needs a restart, never a rebuild.
+# Models are downloaded from the MLflow server (--serve-artifacts) at start-up
+# and carry their own code (code_paths), so the finsight package is not installed.
+# --------------------------------------------------------------------------- #
+
+# ---------- Stage 1: builder ----------
+FROM python:3.11-slim-bookworm AS builder
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+WORKDIR /build
+COPY requirements/serve.txt requirements/serve.txt
+RUN python -m venv /opt/venv \
+ && /opt/venv/bin/pip install --upgrade pip \
+ && /opt/venv/bin/pip install -r requirements/serve.txt
+
+# ---------- Stage 2: runtime ----------
+FROM python:3.11-slim-bookworm AS runtime
+LABEL org.opencontainers.image.title="finsight-serve" \
+      org.opencontainers.image.description="MLflow model serving for FinSight models"
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    MLFLOW_DISABLE_AGENT_HINT=1 \
+    HF_HUB_OFFLINE=1 \
+    TRANSFORMERS_OFFLINE=1
+COPY --from=builder /opt/venv /opt/venv
+RUN useradd --create-home --uid 1000 finsight
+USER finsight
+WORKDIR /home/finsight
+# MODEL_URI and PORT come from compose; --env-manager local = use this image's
+# libraries (pinned to the training versions in requirements/serve.txt).
+CMD ["sh", "-c", "exec mlflow models serve -m \"$MODEL_URI\" --env-manager local -h 0.0.0.0 -p \"$PORT\" --workers 1"]

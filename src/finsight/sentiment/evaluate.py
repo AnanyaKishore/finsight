@@ -1,29 +1,31 @@
-"""DVC stage ``evaluate_sentiment``: measure, calibrate and package the sentiment model.
+"""DVC stage ``evaluate_sentiment@<candidate>``: measure, calibrate and package one model.
 
 Why this stage exists
 ---------------------
-The proposal uses DistilBERT fine-tuned on **SST-2 (movie reviews)** without
-further training. Whether that transfers to *financial* news is an empirical
-question, so the model is measured on Financial PhraseBank (expert-labelled
-financial news sentences) before any score reaches the portal.
+The proposal's model is DistilBERT fine-tuned on **SST-2 (movie reviews)**;
+Day 5 adds **FinBERT** as a challenger. Before any score reaches the portal,
+each candidate is measured on labelled *financial* text, and the promotion
+gate (``finsight.registry``) picks the production model from these numbers.
 
-Procedure
----------
-1. Stratified, seeded split of PhraseBank into a **calibration** half and a
-   **test** half (no sentence is in both).
+Datasets (``sentiment.datasets``)
+---------------------------------
+* ``twitter_financial_news`` (the **gate** dataset): finance news headlines,
+  bearish / bullish / neutral; no candidate was trained on it.
+* ``financial_phrasebank``: reported for comparability with Day 4, flagged
+  ``contaminated`` for candidates trained on it (FinBERT).
+
+Procedure (per dataset)
+-----------------------
+1. Stratified, seeded split into a **calibration** half and a **test** half.
 2. Score every sentence once (``p_pos - p_neg``).
-3. **Binary evaluation** (positive vs negative sentences, test half) -- the task
-   SST-2 was trained for: accuracy, macro-F1, confusion matrix, against a
-   majority-class baseline.
-4. **Neutral band calibration** (calibration half only): the band ``b`` with the
-   highest 3-class macro-F1 when ``|score| < b`` means *neutral*.
-5. **3-class evaluation** with that band on the test half, against a
-   majority-class baseline (always "neutral").
-6. **Latency**: single-text p50/p95 and batch throughput on this machine.
-7. **Error analysis**: the most confident mistakes (logged for inspection).
-8. **Packaging**: an MLflow pyfunc model (weights + tokenizer + calibrated band)
-   is logged to the run and saved to ``models/sentiment/model`` (DVC-tracked)
-   with ``run.json`` linking it to the MLflow run.
+3. **Binary** metrics (positive vs negative sentences, test half) and
+   **3-class** metrics with a neutral band calibrated on the calibration half,
+   each against a majority-class baseline.
+4. The band from the *gate* dataset is the one packaged with the model.
+
+Also: latency (single text, p50/p95), throughput, the most confident mistakes
+(error analysis), and an MLflow pyfunc model saved to
+``models/sentiment/candidates/<candidate>/model`` with ``run.json``.
 """
 
 from __future__ import annotations
@@ -234,31 +236,47 @@ def measure_latency(
     }
 
 
-def compact(result: dict[str, Any], perf: dict[str, float], run_id: str) -> dict[str, Any]:
-    """Small JSON tracked as a DVC metric (``dvc metrics show``)."""
-    b, bb = result["binary"], result["binary_majority_baseline"]
-    t, tb = result["three_class"], result["three_class_majority_baseline"]
-    return {
+def compact(
+    results: dict[str, dict[str, Any]],
+    perf: dict[str, float],
+    run_id: str,
+    candidate: str,
+    gate_dataset: str,
+    contaminated: Sequence[str],
+) -> dict[str, Any]:
+    """Small JSON tracked as a DVC metric; ``gate_*`` fields drive promotion."""
+    gate = results[gate_dataset]
+    b, bb = gate["binary"], gate["binary_majority_baseline"]
+    t, tb = gate["three_class"], gate["three_class_majority_baseline"]
+    out: dict[str, Any] = {
         "run_id": run_id,
-        "n_test": result["n_test"],
-        "binary_accuracy": round(b["accuracy"], 4),
-        "binary_macro_f1": round(b["macro_f1"], 4),
-        "binary_baseline_accuracy": round(bb["accuracy"], 4),
-        "binary_baseline_macro_f1": round(bb["macro_f1"], 4),
-        "neutral_band": round(result["neutral_band"], 4),
-        "three_class_accuracy": round(t["accuracy"], 4),
-        "three_class_macro_f1": round(t["macro_f1"], 4),
-        "three_class_baseline_accuracy": round(tb["accuracy"], 4),
-        "three_class_baseline_macro_f1": round(tb["macro_f1"], 4),
-        "beats_baseline_macro_f1": bool(b["macro_f1"] > bb["macro_f1"]),
-        **{k: perf[k] for k in ("latency_p50_ms", "latency_p95_ms")},
+        "candidate": candidate,
+        "gate_dataset": gate_dataset,
+        "n_test": gate["n_test"],
+        "neutral_band": round(gate["neutral_band"], 4),
+        "gate_macro_f1": round(t["macro_f1"], 4),
+        "gate_accuracy": round(t["accuracy"], 4),
+        "gate_baseline_macro_f1": round(tb["macro_f1"], 4),
+        "gate_baseline_accuracy": round(tb["accuracy"], 4),
+        "gate_binary_accuracy": round(b["accuracy"], 4),
+        "gate_binary_macro_f1": round(b["macro_f1"], 4),
+        "gate_binary_baseline_accuracy": round(bb["accuracy"], 4),
+        "beats_baseline": bool(t["macro_f1"] > tb["macro_f1"]),
     }
+    for name, res in results.items():
+        if name == gate_dataset:
+            continue
+        out[f"{name}_macro_f1"] = round(res["three_class"]["macro_f1"], 4)
+        out[f"{name}_binary_accuracy"] = round(res["binary"]["accuracy"], 4)
+        out[f"{name}_contaminated"] = name in contaminated
+    out.update({k: perf[k] for k in ("latency_p50_ms", "latency_p95_ms", "throughput_texts_per_s")})
+    return out
 
 
 # --------------------------------------------------------------------------- #
 # Figures
 # --------------------------------------------------------------------------- #
-def confusion_figure(result: dict[str, Any]) -> Any:
+def confusion_figure(result: dict[str, Any], title: str = "") -> Any:
     """Binary and 3-class confusion matrices side by side (counts)."""
     import matplotlib  # noqa: PLC0415
 
@@ -283,7 +301,7 @@ def confusion_figure(result: dict[str, Any]) -> Any:
         ax.set_title(
             f"{title}\nacc {result[key]['accuracy']:.3f}  F1 {result[key]['macro_f1']:.3f}"
         )
-    fig.suptitle("DistilBERT-SST-2 on Financial PhraseBank (test half)")
+    fig.suptitle(title or "Sentiment model on the test half")
     fig.tight_layout()
     return fig
 
@@ -338,42 +356,76 @@ def package_model(
 # --------------------------------------------------------------------------- #
 # Stage
 # --------------------------------------------------------------------------- #
-def run_evaluation(params: dict[str, Any], root: Path) -> dict[str, Any]:
-    """Score PhraseBank, evaluate, calibrate, package -- all inside one MLflow run."""
+def eval_fingerprint(params: dict[str, Any]) -> str:
+    """Identify the gate evaluation (dataset revision + split).
+
+    Metrics with the same fingerprint are directly comparable between model versions.
+    """
+    ds = params["datasets"][params["gate_dataset"]]
+    return (
+        f"{params['gate_dataset']}@{ds['revision'][:12]}"
+        f"-share{float(params['calibration_share'])}-seed{int(params['seed'])}"
+    )
+
+
+def evaluate_candidate_scores(
+    params: dict[str, Any], datasets: dict[str, pd.DataFrame]
+) -> tuple[dict[str, Any], dict[str, pd.DataFrame]]:
+    """Run :func:`evaluate_scores` on every scored dataset (``score`` column present)."""
+    results, curves = {}, {}
+    for name, frame in datasets.items():
+        results[name], curves[name] = evaluate_scores(
+            frame, float(params["calibration_share"]), int(params["seed"])
+        )
+    return results, curves
+
+
+def run_evaluation(params: dict[str, Any], candidate: str, root: Path) -> dict[str, Any]:
+    """Score every dataset, evaluate, calibrate, package -- all inside one MLflow run."""
     import mlflow  # noqa: PLC0415
 
     from finsight.models.tracking import lineage_tags  # noqa: PLC0415
 
-    base_dir = root / params["base_dir"]
-    model_dir = root / params["model_dir"]
-    model_dir.mkdir(parents=True, exist_ok=True)
-    frame = pd.read_csv(root / params["phrasebank_path"])
+    cand = params["candidates"][candidate]
+    gate_ds = params["gate_dataset"]
+    contaminated = list(cand.get("trained_on", []))
+    base_dir, out_dir = root / cand["base_dir"], root / cand["model_dir"]
+    out_dir.mkdir(parents=True, exist_ok=True)
     scorer = SentimentScorer(
         base_dir,
         max_length=int(params["max_length"]),
         batch_size=int(params["batch_size"]),
         threads=int(params["torch_threads"]),
     )
-    started = time.perf_counter()
-    frame["score"] = scorer.scores(frame["sentence"].tolist())
+    datasets, n_texts, started = {}, 0, time.perf_counter()
+    for name, spec in params["datasets"].items():
+        frame = pd.read_csv(root / spec["path"])
+        frame["score"] = scorer.scores(frame["sentence"].tolist())
+        datasets[name] = frame
+        n_texts += len(frame)
     elapsed = time.perf_counter() - started
     perf = {
-        "throughput_texts_per_s": round(len(frame) / max(elapsed, 1e-9), 1),
-        **measure_latency(scorer.scores, frame["sentence"].tolist()),
+        "throughput_texts_per_s": round(n_texts / max(elapsed, 1e-9), 1),
+        **measure_latency(scorer.scores, datasets[gate_ds]["sentence"].tolist()),
     }
-    result, curve = evaluate_scores(frame, float(params["calibration_share"]), int(params["seed"]))
-    band = result["neutral_band"]
+    results, curves = evaluate_candidate_scores(params, datasets)
+    band = results[gate_ds]["neutral_band"]
     config = {
-        "base_model": params["base_model"],
-        "base_revision": params["base_revision"],
+        "candidate": candidate,
+        "base_model": cand["repo"],
+        "base_revision": cand["revision"],
         "neutral_band": band,
         "max_length": int(params["max_length"]),
         "batch_size": int(params["batch_size"]),
         "serving_threads": 2,
-        "model_version": model_version(params["base_revision"], band, int(params["max_length"])),
+        "model_version": model_version(cand["revision"], band, int(params["max_length"])),
+        "eval_fingerprint": eval_fingerprint(params),
     }
+    title = f"{candidate} on {gate_ds} (test half)"
 
-    with mlflow.start_run(run_name=f"sentiment-{datetime.now(UTC):%Y%m%d-%H%M%S}") as run:
+    with mlflow.start_run(
+        run_name=f"sentiment-{candidate}-{datetime.now(UTC):%Y%m%d-%H%M%S}"
+    ) as run:
         mlflow.set_tags(
             {
                 **lineage_tags(
@@ -381,58 +433,61 @@ def run_evaluation(params: dict[str, Any], root: Path) -> dict[str, Any]:
                     None,
                     int(params["seed"]),
                     dvc_inputs={
-                        "dvc_phrasebank_md5": ("fetch_sentiment", params["phrasebank_path"]),
-                        "dvc_base_model_md5": ("fetch_sentiment", params["base_dir"]),
-                    },
+                        f"dvc_{name}_md5": ("fetch_sentiment_data", spec["path"])
+                        for name, spec in params["datasets"].items()
+                    }
+                    | {"dvc_base_model_md5": (f"fetch_sentiment@{candidate}", cand["base_dir"])},
                 ),
                 "stage": "evaluate_sentiment",
-                "model_family": "distilbert-sst2",
+                "candidate": candidate,
+                "model_family": candidate,
+                "trained_on": ",".join(contaminated) or "-",
                 "model_version": config["model_version"],
+                "eval_fingerprint": config["eval_fingerprint"],
             }
         )
         mlflow.log_params(
             {
-                "base_model": params["base_model"],
-                "base_revision": params["base_revision"],
-                "eval_dataset": f"{params['phrasebank_repo']}@{params['phrasebank_revision']}",
-                "agreement": params["phrasebank_agreement"],
+                "candidate": candidate,
+                "base_model": cand["repo"],
+                "base_revision": cand["revision"],
+                "gate_dataset": gate_ds,
                 "calibration_share": params["calibration_share"],
                 "seed": params["seed"],
                 "max_length": params["max_length"],
                 "batch_size": params["batch_size"],
                 "torch_threads": params["torch_threads"],
-                "n_sentences": len(frame),
-                "n_calibration": result["n_calibration"],
-                "n_test": result["n_test"],
                 "neutral_band": band,
+                **{f"n_{name}": len(frame) for name, frame in datasets.items()},
             }
         )
-        with warnings.catch_warnings():  # local path matches 2 equivalent source types
-            warnings.simplefilter("ignore", UserWarning)
-            dataset = mlflow.data.from_pandas(
-                frame[["id", "sentence", "label"]],
-                source=params["phrasebank_path"],
-                name="financial_phrasebank",
-                targets="label",
-            )
-        mlflow.log_input(dataset, context="evaluation")
-        metrics = compact(result, perf, run.info.run_id)
-        mlflow.log_metrics(
-            {
-                k: float(v)
-                for k, v in {**metrics, **perf}.items()
-                if isinstance(v, int | float) and not isinstance(v, bool)
-            }
-        )
-        mlflow.set_tag("beats_baseline", str(metrics["beats_baseline_macro_f1"]).lower())
-        mlflow.log_dict(result, "evaluation/phrasebank_full.json")
-        mlflow.log_figure(confusion_figure(result), "plots/confusion.png")
-        mlflow.log_text(curve.to_csv(index=False), "evaluation/neutral_band_curve.csv")
+        for name, frame in datasets.items():
+            spec = params["datasets"][name]
+            with warnings.catch_warnings():  # local path matches 2 equivalent source types
+                warnings.simplefilter("ignore", UserWarning)
+                dataset = mlflow.data.from_pandas(
+                    frame[["id", "sentence", "label"]],
+                    source=spec["path"],
+                    name=name,
+                    targets="label",
+                )
+            mlflow.log_input(dataset, context="evaluation")
+        metrics = compact(results, perf, run.info.run_id, candidate, gate_ds, contaminated)
+        numeric = {
+            k: float(v)
+            for k, v in metrics.items()
+            if isinstance(v, int | float) and not isinstance(v, bool)
+        }
+        mlflow.log_metrics(numeric)
+        mlflow.set_tag("beats_baseline", str(metrics["beats_baseline"]).lower())
+        for name, res in results.items():
+            mlflow.log_dict(res, f"evaluation/{name}_full.json")
+            mlflow.log_text(curves[name].to_csv(index=False), f"evaluation/{name}_band_curve.csv")
+        mlflow.log_figure(confusion_figure(results[gate_ds], title), "plots/confusion.png")
         packaged = package_model(
-            base_dir, config, frame["sentence"].head(3).tolist(), root, model_dir
+            base_dir, config, datasets[gate_ds]["sentence"].head(3).tolist(), root, out_dir
         )
-        run_id = run.info.run_id
-        experiment_id = run.info.experiment_id
+        run_id, experiment_id = run.info.run_id, run.info.experiment_id
 
     run_info = {
         "run_id": run_id,
@@ -441,36 +496,50 @@ def run_evaluation(params: dict[str, Any], root: Path) -> dict[str, Any]:
         "tracking_uri": mlflow.get_tracking_uri(),
         "model_uri": packaged["model_uri"],
         "model_id": packaged["model_id"],
+        "candidate": candidate,
         "model_version": config["model_version"],
         "neutral_band": band,
+        "eval_fingerprint": config["eval_fingerprint"],
+        "gate_metrics": {k: v for k, v in metrics.items() if k.startswith("gate_")},
         "evaluated_at": datetime.now(UTC).isoformat(timespec="seconds"),
     }
-    (model_dir / "run.json").write_text(json.dumps(run_info, indent=2) + "\n", encoding="utf-8")
-    return {"metrics": metrics, "result": result, "curve": curve}
+    (out_dir / "run.json").write_text(json.dumps(run_info, indent=2) + "\n", encoding="utf-8")
+    return {"metrics": metrics, "results": results, "curves": curves, "title": title}
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Stage entry point (``python -m finsight.sentiment.evaluate``)."""
-    argparse.ArgumentParser(description="Evaluate + calibrate + package sentiment").parse_args(argv)
+    """Stage entry point (``python -m finsight.sentiment.evaluate --candidate <key>``)."""
+    parser = argparse.ArgumentParser(description="Evaluate + calibrate + package one candidate")
+    parser.add_argument("--candidate", required=True)
+    args = parser.parse_args(argv)
     settings = get_settings()
     configure_logging("evaluate_sentiment", settings.log_level, settings.root / "logs")
     params = settings.section("sentiment")
+    if args.candidate not in params["candidates"]:
+        print(f"unknown candidate {args.candidate!r}", file=sys.stderr)
+        return 2
     try:
         from finsight.models.tracking import configure_tracking  # noqa: PLC0415
 
-        with stage_run("evaluate_sentiment", settings) as run:
+        with stage_run(f"evaluate_sentiment@{args.candidate}", settings) as run:
             configure_tracking(params["experiment_name"])
-            outcome = run_evaluation(params, settings.root)
-            report = settings.root / params["eval_report"]
-            report.parent.mkdir(parents=True, exist_ok=True)
-            report.write_text(json.dumps(outcome["metrics"], indent=2) + "\n", encoding="utf-8")
-            plots = settings.root / "reports" / "plots"
+            outcome = run_evaluation(params, args.candidate, settings.root)
+            reports = settings.root / "reports"
+            plots = reports / "plots"
             plots.mkdir(parents=True, exist_ok=True)
-            outcome["curve"].to_csv(plots / "sentiment_neutral_band.csv", index=False)
-            confusion_figure(outcome["result"]).savefig(plots / "sentiment_confusion.png", dpi=110)
+            (reports / f"sentiment_eval_{args.candidate}.json").write_text(
+                json.dumps(outcome["metrics"], indent=2) + "\n", encoding="utf-8"
+            )
+            gate_ds = params["gate_dataset"]
+            outcome["curves"][gate_ds].to_csv(
+                plots / f"sentiment_band_{args.candidate}.csv", index=False
+            )
+            confusion_figure(outcome["results"][gate_ds], outcome["title"]).savefig(
+                plots / f"sentiment_confusion_{args.candidate}.png", dpi=110
+            )
             run.metrics = {
                 k: outcome["metrics"][k]
-                for k in ("binary_macro_f1", "three_class_macro_f1", "neutral_band")
+                for k in ("gate_macro_f1", "neutral_band", "beats_baseline")
             }
     except (FinSightError, ValueError, FileNotFoundError, OSError) as exc:
         print(f"evaluate_sentiment failed: {exc}", file=sys.stderr)

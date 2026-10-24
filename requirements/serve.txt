@@ -1,0 +1,10 @@
+# Model-serving image: `mlflow models serve` for the LSTM and sentiment pyfunc
+# models. The models carry their own code (code_paths), so the finsight
+# package is not installed; these are the libraries that code imports.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.14.1
+mlflow==3.17.2
+transformers==5.20.2
+numpy==2.4.6
+pandas==2.3.3
+pyarrow==25.0.1

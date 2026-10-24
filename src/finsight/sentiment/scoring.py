@@ -20,6 +20,13 @@ SST-2 is a *binary* movie-review dataset, but much financial news is factual
 when ``|score| < neutral_band``; the band is calibrated on labelled financial
 sentences (``evaluate_sentiment``), never guessed.
 
+Two- and three-label models
+---------------------------
+DistilBERT-SST-2 has labels {negative, positive}; FinBERT (Day 5 challenger)
+has {positive, negative, neutral}. The score is ``p_pos - p_neg`` for both,
+so it stays comparable across models; ``confidence`` is the probability of
+the most likely class (0.5-1 for two labels, 1/3-1 for three).
+
 The same :class:`SentimentScorer` and :func:`labels_for` run in evaluation,
 batch scoring and the served MLflow model, so there is no training/serving skew.
 """
@@ -109,17 +116,19 @@ class SentimentScorer:
             str(model_dir), local_files_only=True
         ).eval()
         labels = {str(v).lower(): int(k) for k, v in self.model.config.id2label.items()}
-        if set(labels) != {POSITIVE, NEGATIVE}:
-            raise ValueError(f"expected POSITIVE/NEGATIVE labels, model has {sorted(labels)}")
+        if set(labels) not in ({POSITIVE, NEGATIVE}, {POSITIVE, NEGATIVE, NEUTRAL}):
+            raise ValueError(
+                f"expected POSITIVE/NEGATIVE[/NEUTRAL] labels, model has {sorted(labels)}"
+            )
         self.pos_index, self.neg_index = labels[POSITIVE], labels[NEGATIVE]
+        self.n_labels = len(labels)
 
-    def probabilities(self, texts: Sequence[Any]) -> tuple[np.ndarray, np.ndarray]:
-        """``(p_neg, p_pos)`` for every text, in input order."""
+    def probability_matrix(self, texts: Sequence[Any]) -> np.ndarray:
+        """Class probabilities ``(N, n_labels)`` in input order (model label order)."""
         import torch  # noqa: PLC0415
 
         cleaned = clean_texts(texts)
-        p_neg = np.zeros(len(cleaned), dtype="float64")
-        p_pos = np.zeros(len(cleaned), dtype="float64")
+        out = np.zeros((len(cleaned), self.n_labels), dtype="float64")
         order = np.argsort([len(t) for t in cleaned], kind="stable")
         for start in range(0, len(order), self.batch_size):
             idx = order[start : start + self.batch_size]
@@ -131,12 +140,20 @@ class SentimentScorer:
                 return_tensors="pt",
             )
             with torch.inference_mode():
-                probs = torch.softmax(self.model(**batch).logits.float(), dim=-1).numpy()
-            p_neg[idx] = probs[:, self.neg_index]
-            p_pos[idx] = probs[:, self.pos_index]
-        return p_neg, p_pos
+                out[idx] = torch.softmax(self.model(**batch).logits.float(), dim=-1).numpy()
+        return out
+
+    def probabilities(self, texts: Sequence[Any]) -> tuple[np.ndarray, np.ndarray]:
+        """``(p_neg, p_pos)`` for every text, in input order."""
+        probs = self.probability_matrix(texts)
+        return probs[:, self.neg_index], probs[:, self.pos_index]
+
+    def score_and_confidence(self, texts: Sequence[Any]) -> tuple[np.ndarray, np.ndarray]:
+        """Scores in [-1, 1] and top-class probabilities, both rounded to 6 decimals."""
+        probs = self.probability_matrix(texts)
+        scores = scores_from_probabilities(probs[:, self.neg_index], probs[:, self.pos_index])
+        return np.round(scores, 6), np.round(probs.max(axis=1), 6)
 
     def scores(self, texts: Sequence[Any]) -> np.ndarray:
         """Sentiment scores in [-1, 1], rounded to 6 decimals (stable across batchings)."""
-        p_neg, p_pos = self.probabilities(texts)
-        return np.round(scores_from_probabilities(p_neg, p_pos), 6)
+        return self.score_and_confidence(texts)[0]

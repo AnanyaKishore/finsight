@@ -1,0 +1,56 @@
+{
+  "lstm": {
+    "decision": {
+      "challenger_accepted": true,
+      "challenger_metric": 2.9521,
+      "challenger_version": "1",
+      "champion_metric": null,
+      "champion_version": "1",
+      "metric": "test_mape",
+      "promote": false,
+      "reason": "challenger is already production"
+    },
+    "production": {
+      "model_uri": "models:/finsight-lstm/1",
+      "registered_name": "finsight-lstm",
+      "run_id": "c8bdaa9d16334182951520600e7359a0",
+      "version": "1"
+    }
+  },
+  "sentiment": {
+    "candidates": {
+      "distilbert_sst2": {
+        "accepted": true,
+        "metric": 0.4605,
+        "rolled_back": false,
+        "version": "1"
+      },
+      "finbert": {
+        "accepted": true,
+        "metric": 0.6575,
+        "rolled_back": false,
+        "version": "2"
+      }
+    },
+    "decision": {
+      "best_candidate": "finbert",
+      "challenger_accepted": true,
+      "challenger_metric": 0.6575,
+      "challenger_version": "2",
+      "champion_metric": 0.6575,
+      "champion_version": "2",
+      "metric": "gate_macro_f1",
+      "promote": false,
+      "reason": "challenger is already production"
+    },
+    "production": {
+      "candidate": "finbert",
+      "model_uri": "models:/finsight-sentiment/2",
+      "model_version": "0bc2ac10dda6-band0.7484-len256",
+      "neutral_band": 0.7484,
+      "registered_name": "finsight-sentiment",
+      "run_id": "62e3fec1e294432397cef64d28a170af",
+      "version": "2"
+    }
+  }
+}

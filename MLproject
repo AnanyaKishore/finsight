@@ -31,11 +31,16 @@ entry_points:
       max_epochs_override: {type: int, default: -1}
     command: "python -m finsight.models.lstm.feature_experiment --max-epochs {max_epochs_override}"
 
-  evaluate_sentiment:
-    command: "python -m finsight.sentiment.evaluate"
-
   optimize_portfolio:
     command: "python -m finsight.portfolio.optimize"
+
+  evaluate_sentiment_candidate:
+    parameters:
+      candidate: {type: string, default: distilbert_sst2}
+    command: "python -m finsight.sentiment.evaluate --candidate {candidate}"
+
+  register:
+    command: "python -m finsight.registry.register"
 
   pipeline:
     command: "dvc repro"

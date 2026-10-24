@@ -38,13 +38,13 @@ Deviations from the proposal and their rationale: `docs/DESIGN_DECISIONS.md`.
 |---|---|---|
 | mongo | 512 MB | WiredTiger cache capped at 0.25 GB |
 | mlflow (tracking + registry) | 768 MB | SQLite backend + served artifacts; ~510 MB measured with background jobs disabled |
-| lstm-serve | 512 MB | CPU PyTorch, tiny model |
-| sentiment-serve | 1.2 GB | DistilBERT (~268 MB weights) + torch; batch scoring measured at ~1.3 GB peak (runs in the pipeline, not alongside Spark) |
-| backend (FastAPI) | 256 MB | |
+| lstm-serve | 1 GB | measured ~0.9 GB: `mlflow models serve` launcher (~250 MB) + worker with torch |
+| sentiment-serve | 2 GB | ~1.4 GB with DistilBERT, ~1.6 GB with FinBERT (launcher + worker); stop it during heavy pipeline runs if needed |
+| backend (FastAPI) | 384 MB | ~150-200 MB (no pandas/torch in the image) |
 | frontend (nginx) | 64 MB | static files |
 | scheduler (+ Spark/training jobs when running) | 2 GB peak | Spark `local[4]`, driver 1 GB |
 | prometheus / alertmanager / grafana / exporters | ~600 MB total | |
-| **Total** | **≈ 6.1 GB peak, ≈ 3.9 GB idle** | Give Docker 6 GB (see README). |
+| **Total** | **≈ 6.6 GB peak (pipeline run + all services), ≈ 3.8 GB idle** | Give Docker 6 GB; stop `sentiment-serve` while `dvc repro` scores news if the laptop swaps. |
 
 ---
 
@@ -113,7 +113,12 @@ experiment (`make feature-experiment`, MLflow only); MongoDB collections `news_s
 - Portfolio: vectorised long-only grid (step 0.1 → 92 378 weightings), Sharpe/return/volatility with risk-free rate param; walk-forward comparison with equal weight; result stored in Mongo (`portfolio`) + MLflow.
 - DVC stages `evaluate_sentiment`, `optimize_portfolio`.
 
-### Day 5 — Sun 25 Oct · Registry, model serving, FastAPI backend
+### Day 5 — Sun 25 Oct · Registry, model serving, FastAPI backend ✅ (done 24 Oct)
+**Delivered:** `register` DVC stage (champion/challenger gate, aliases + stages, idempotent),
+rollback CLI, FinBERT challenger on a fair gate dataset, `lstm-serve` / `sentiment-serve`
+(`mlflow models serve` from `@production`), FastAPI backend (8 endpoints, Prometheus
+metrics, stored forecasts, graceful degradation), `docs/LLD.md` + `docs/api/openapi.json`,
+155 unit tests.
 **Role:** turns models into APIs.
 - `register` stage: champion/challenger gate (promote only if the new model beats Production on the same validation set) → stages + `@staging/@production` aliases; `scripts/rollback.py`.
 - `lstm-serve` and `sentiment-serve` containers via `mlflow models serve -m models:/<name>@production`.

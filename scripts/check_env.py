@@ -47,6 +47,9 @@ def main() -> int:
         "mlflow",
         "transformers",
         "scipy",
+        "fastapi",
+        "uvicorn",
+        "prometheus_client",
     ):
         try:
             __import__(module)

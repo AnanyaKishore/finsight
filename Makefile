@@ -3,7 +3,7 @@
 # Load .env (if present) so targets can use the same variables as compose.
 -include .env
 export
-.PHONY: help install lint format test test-int up down mongo-shell ingest-plan backfill incremental status build repro dag eda benchmark train plots sentiment portfolio feature-experiment mlflow-ui
+.PHONY: help install lint format test test-int up down mongo-shell ingest-plan backfill incremental status build repro dag eda benchmark train plots sentiment portfolio feature-experiment mlflow-ui register serve api-dev rollback-lstm
 
 help:            ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*## "}{printf "  %-20s %s\n",$$1,$$2}'
@@ -76,3 +76,15 @@ feature-experiment:  ## LSTM: price-only vs price+volatility input (MLflow only,
 
 mlflow-ui:       ## start the MLflow server (UI at http://localhost:5000)
 	docker compose up -d mlflow
+
+register:        ## register new model versions + run the promotion gate (through DVC)
+	dvc repro register
+
+serve:           ## build + start model servers and the backend (API docs: http://localhost:8000/docs)
+	docker compose up -d --build lstm-serve sentiment-serve backend
+
+api-dev:         ## run the backend locally with auto-reload-free uvicorn (needs serving up)
+	python -m finsight.api
+
+rollback-lstm:   ## roll the LSTM back to the previous production version (REASON="...")
+	python -m finsight.registry.rollback --model lstm --reason "$(REASON)"

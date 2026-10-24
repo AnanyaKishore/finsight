@@ -1,11 +1,11 @@
 # =========================================================================== #
 # FinSight CI pipeline (DVC DAG).  Run:  dvc repro      Visualise:  dvc dag
 #
-#   unit_tests ──► export ──► validate ──► process ─┬─► train_lstm ──► evaluate_lstm
-#        │                                          ├─► optimize_portfolio
-#        │                                          └─► score_sentiment
-#        └──► evaluate_sentiment ◄── fetch_sentiment        ▲
-#                    └──────────────────────────────────────┘
+#   unit_tests ─► export ─► validate ─► process ─┬─► train_lstm ─► evaluate_lstm ─┐
+#        │                                        ├─► optimize_portfolio           │
+#        │                                        └─────────────┐                  ▼
+#        └─► evaluate_sentiment@{distilbert_sst2,finbert} ─────► register ─► score_sentiment
+#              ▲ fetch_sentiment@{...}, fetch_sentiment_data      (MLflow registry gate)
 #
 # * unit_tests is the CI gate: if the suite fails, nothing downstream runs.
 # * export is always re-run (it reads the live MongoDB) but writes
@@ -19,7 +19,8 @@
 # * Stages that publish results for the API (score_sentiment,
 #   optimize_portfolio) also upsert MongoDB; the DVC outputs stay the source
 #   of truth (after a Mongo reset: dvc repro -f score_sentiment optimize_portfolio).
-# Stages grow day by day: register + serving (Day 5).
+# * register runs the champion/challenger gate and writes reports/promotion.json,
+#   the production pointer used by score_sentiment, serving and the API (Day 5).
 # =========================================================================== #
 
 stages:
@@ -129,54 +130,90 @@ stages:
           cache: false
 
   # ------------------------------------------------------------- Day 4 ----
-  fetch_sentiment:
-    cmd: python -m finsight.sentiment.fetch
+  fetch_sentiment:                    # one stage per candidate: fetch_sentiment@finbert ...
+    foreach: ${sentiment.candidates}
+    do:
+      cmd: python -m finsight.sentiment.fetch model ${key}
+      deps:
+        - src/finsight/sentiment/fetch.py
+      params:
+        - sentiment.candidates.${key}.repo
+        - sentiment.candidates.${key}.revision
+      outs:
+        - ${item.base_dir}               # DVC-cached (offline after the first run)
+
+  fetch_sentiment_data:
+    cmd: python -m finsight.sentiment.fetch data
     deps:
       - src/finsight/sentiment/fetch.py
     params:
-      - sentiment.base_model
-      - sentiment.base_revision
-      - sentiment.phrasebank_repo
-      - sentiment.phrasebank_revision
-      - sentiment.phrasebank_agreement
+      - sentiment.datasets
     outs:
-      - models/sentiment/base               # ~268 MB, DVC-cached (works offline after)
+      - data/external/twitter_financial_news.csv
       - data/external/financial_phrasebank.csv
 
-  evaluate_sentiment:
-    cmd: python -m finsight.sentiment.evaluate
+  evaluate_sentiment:                 # evaluate_sentiment@distilbert_sst2, @finbert
+    foreach: ${sentiment.candidates}
+    do:
+      cmd: python -m finsight.sentiment.evaluate --candidate ${key}
+      deps:
+        - reports/unit_tests.json         # CI gate
+        - ${item.base_dir}
+        - data/external/twitter_financial_news.csv
+        - data/external/financial_phrasebank.csv
+        - src/finsight/sentiment/scoring.py
+        - src/finsight/sentiment/evaluate.py
+        - src/finsight/sentiment/pyfunc_model.py
+        - src/finsight/sentiment/pyfunc_entry.py
+        - src/finsight/models/tracking.py
+      params:
+        - sentiment.candidates.${key}
+        - sentiment.gate_dataset
+        - sentiment.calibration_share
+        - sentiment.seed
+        - sentiment.max_length
+      outs:
+        - ${item.model_dir}               # pyfunc model + run.json (MLflow run ID)
+        - reports/plots/sentiment_band_${key}.csv:
+            cache: false
+        - reports/plots/sentiment_confusion_${key}.png:
+            cache: false
+      metrics:
+        - reports/sentiment_eval_${key}.json:   # gate_* = Twitter financial news test half
+            cache: false
+
+  register:                           # MLflow registry + champion/challenger gate
+    cmd: python -m finsight.registry.register
     deps:
-      - reports/unit_tests.json             # CI gate
-      - models/sentiment/base
-      - data/external/financial_phrasebank.csv
-      - src/finsight/sentiment/scoring.py
-      - src/finsight/sentiment/evaluate.py
-      - src/finsight/sentiment/pyfunc_model.py
-      - src/finsight/sentiment/pyfunc_entry.py
-      - src/finsight/models/tracking.py
+      - models/lstm
+      - reports/lstm_metrics.json
+      - data/processed/prices             # the LSTM champion is re-scored on today's windows
+      # one pair of lines per sentiment candidate:
+      - models/sentiment/candidates/distilbert_sst2
+      - reports/sentiment_eval_distilbert_sst2.json
+      - models/sentiment/candidates/finbert
+      - reports/sentiment_eval_finbert.json
+      - data/external/twitter_financial_news.csv
+      - src/finsight/registry
     params:
+      - registry
+      - sentiment.gate_dataset
       - sentiment.calibration_share
       - sentiment.seed
-      - sentiment.max_length
     outs:
-      - models/sentiment/model              # pyfunc: weights + tokenizer + calibrated band
-      - models/sentiment/run.json           # MLflow run ID + model version (also in sentiment_eval.json)
-      - reports/plots/sentiment_neutral_band.csv:
-          cache: false
-      - reports/plots/sentiment_confusion.png:
-          cache: false
-    metrics:
-      - reports/sentiment_eval.json:        # PhraseBank test half vs majority baseline
+      - reports/promotion.json:           # decisions + production pointers (Git-tracked)
           cache: false
 
   score_sentiment:
     cmd: python -m finsight.sentiment.score
     deps:
       - data/processed/news
-      - models/sentiment/model
-      - models/sentiment/run.json
+      - reports/promotion.json            # which model is in production
+      - models/sentiment/candidates/distilbert_sst2
+      - models/sentiment/candidates/finbert
       - src/finsight/sentiment/score.py
       - src/finsight/sentiment/scoring.py
+      - src/finsight/registry/pointer.py
     params:
       - sentiment.top_headlines
     outs:
@@ -227,11 +264,13 @@ plots:
       x: mean_abs_change_pct
       y:
         reports/plots/lstm_input_attribution.csv: block
-  - Sentiment neutral-band calibration (calibration half):
+  - Sentiment neutral-band calibration (Twitter financial news, calibration half):
       x: band
       y:
-        reports/plots/sentiment_neutral_band.csv: [macro_f1, accuracy, neutral_share]
-  - reports/plots/sentiment_confusion.png
+        reports/plots/sentiment_band_distilbert_sst2.csv: macro_f1
+        reports/plots/sentiment_band_finbert.csv: macro_f1
+  - reports/plots/sentiment_confusion_distilbert_sst2.png
+  - reports/plots/sentiment_confusion_finbert.png
   - Portfolio walk-forward backtest (growth of $1, out of sample):
       x: date
       y:

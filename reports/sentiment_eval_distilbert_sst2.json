@@ -1,0 +1,21 @@
+{
+  "run_id": "7d2da6a2efcf4ae49aec2796ab9cf1ed",
+  "candidate": "distilbert_sst2",
+  "gate_dataset": "twitter_financial_news",
+  "n_test": 1189,
+  "neutral_band": 0.9929,
+  "gate_macro_f1": 0.4605,
+  "gate_accuracy": 0.6013,
+  "gate_baseline_macro_f1": 0.2639,
+  "gate_baseline_accuracy": 0.6552,
+  "gate_binary_accuracy": 0.6512,
+  "gate_binary_macro_f1": 0.6417,
+  "gate_binary_baseline_accuracy": 0.578,
+  "beats_baseline": true,
+  "financial_phrasebank_macro_f1": 0.54,
+  "financial_phrasebank_binary_accuracy": 0.6812,
+  "financial_phrasebank_contaminated": false,
+  "latency_p50_ms": 17.96,
+  "latency_p95_ms": 22.13,
+  "throughput_texts_per_s": 48.8
+}

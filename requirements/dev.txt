@@ -1,5 +1,6 @@
 # Local development + CI tooling (not installed in runtime images).
 -r pipeline.txt
+-r api.txt
 dvc==3.67.1
 pytest==9.1.1
 pytest-cov==7.1.0

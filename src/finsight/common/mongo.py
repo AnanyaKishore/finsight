@@ -36,6 +36,8 @@ API_USAGE = "api_usage"
 NEWS_SENTIMENT = "news_sentiment"  # one document per scored article
 SENTIMENT_WEEKLY = "sentiment_weekly"  # one document per (ticker, week)
 PORTFOLIOS = "portfolios"  # one document per optimisation date
+# Day 5: forecasts served by the API (one per ticker / origin / model version).
+FORECASTS = "forecasts"
 
 
 def get_client(settings: Settings, timeout_ms: int = 5000) -> MongoClient:
@@ -72,4 +74,8 @@ def ensure_indexes(db: Database) -> None:
         [("ticker", ASCENDING), ("week_start", ASCENDING)], unique=True
     )
     db[PORTFOLIOS].create_index([("as_of", DESCENDING)], unique=True)
+    db[FORECASTS].create_index(
+        [("ticker", ASCENDING), ("as_of", ASCENDING), ("model_version", ASCENDING)], unique=True
+    )
+    db[FORECASTS].create_index([("ticker", ASCENDING), ("as_of", DESCENDING)])
     log.debug("mongo indexes ensured", extra={"db": db.name})

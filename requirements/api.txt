@@ -1,0 +1,8 @@
+# Backend image (FastAPI) -- deliberately small: no pandas / torch / Spark.
+# Versions match what mlflow 3.17.2 already resolves in the dev environment.
+-r base.txt
+fastapi==0.159.1
+uvicorn==0.54.0
+prometheus-client==0.26.0
+# MlflowClient for /api/model-info (registry lookups only; no model code).
+mlflow-skinny==3.17.2

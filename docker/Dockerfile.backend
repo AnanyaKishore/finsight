@@ -1,0 +1,38 @@
+# --------------------------------------------------------------------------- #
+# FinSight backend image (FastAPI + uvicorn). Small on purpose: no pandas,
+# torch or Spark -- the backend reads MongoDB and calls the model servers.
+# --------------------------------------------------------------------------- #
+
+# ---------- Stage 1: builder ----------
+FROM python:3.11-slim-bookworm AS builder
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+WORKDIR /build
+COPY requirements/base.txt requirements/api.txt requirements/
+RUN python -m venv /opt/venv \
+ && /opt/venv/bin/pip install --upgrade pip \
+ && /opt/venv/bin/pip install -r requirements/api.txt
+
+# ---------- Stage 2: runtime ----------
+FROM python:3.11-slim-bookworm AS runtime
+LABEL org.opencontainers.image.title="finsight-backend" \
+      org.opencontainers.image.description="FinSight REST API"
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app/src \
+    FINSIGHT_ROOT=/app \
+    MLFLOW_DISABLE_AGENT_HINT=1
+COPY --from=builder /opt/venv /opt/venv
+WORKDIR /app
+COPY src/finsight/__init__.py src/finsight/__init__.py
+COPY src/finsight/common/ src/finsight/common/
+COPY src/finsight/api/ src/finsight/api/
+COPY configs/ configs/
+COPY params.yaml params.yaml
+RUN useradd --create-home --uid 1000 finsight \
+ && mkdir -p /app/logs && chown -R finsight:finsight /app
+USER finsight
+EXPOSE 8000
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=4)"
+CMD ["python", "-m", "finsight.api", "--host", "0.0.0.0", "--port", "8000"]

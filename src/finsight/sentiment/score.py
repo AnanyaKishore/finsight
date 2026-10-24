@@ -77,41 +77,68 @@ def load_news(path: Path) -> pd.DataFrame:
     return frame.sort_values(["ticker", "news_id"], kind="mergesort").reset_index(drop=True)
 
 
+CACHE_COLUMNS = ["ticker", "news_id", "text_sha1", "model_version", "score", "confidence"]
+ScoreFn = Callable[[list[str]], "np.ndarray | tuple[np.ndarray, np.ndarray]"]
+
+
 def load_cache(path: Path) -> pd.DataFrame:
-    """Previously scored articles (empty frame on the first run)."""
+    """Previously scored articles (empty frame on the first run).
+
+    Day 4 caches have no ``confidence`` column; they were all written by the
+    two-label DistilBERT, for which confidence = (1 + |score|) / 2 exactly.
+    """
     if not path.exists():
-        return pd.DataFrame(columns=["ticker", "news_id", "text_sha1", "model_version", "score"])
-    return pd.read_parquet(
-        path, columns=["ticker", "news_id", "text_sha1", "model_version", "score"]
-    )
+        return pd.DataFrame(columns=CACHE_COLUMNS)
+    frame = pd.read_parquet(path)
+    if "confidence" not in frame.columns:
+        frame["confidence"] = np.round((1 + frame["score"].abs()) / 2, 6)
+    return frame[CACHE_COLUMNS]
+
+
+def _split(result: Any, n: int) -> tuple[np.ndarray, np.ndarray]:
+    """Accept ``scores`` or ``(scores, confidences)`` from a score function."""
+    if isinstance(result, tuple):
+        scores, confidence = (np.asarray(r, dtype="float64") for r in result)
+    else:
+        scores = np.asarray(result, dtype="float64")
+        confidence = np.round((1 + np.abs(scores)) / 2, 6)  # two-label models
+    if len(scores) != n:
+        raise ValueError(f"score function returned {len(scores)} scores for {n} texts")
+    return scores, confidence
 
 
 def score_incremental(
     news: pd.DataFrame,
     cache: pd.DataFrame,
     version: str,
-    score_fn: Callable[[list[str]], np.ndarray],
+    score_fn: ScoreFn,
 ) -> tuple[pd.DataFrame, dict[str, int]]:
     """Reuse cached scores where valid; score the rest with ``score_fn``.
 
     Returns:
         ``(news_with_score, counts)`` -- counts of ``reused`` and ``scored`` rows.
     """
-    valid = cache[cache["model_version"] == version][["ticker", "news_id", "text_sha1", "score"]]
+    keep = ["ticker", "news_id", "text_sha1", "score", "confidence"]
+    valid = cache[cache["model_version"] == version][keep]
     merged = news.merge(valid, on=["ticker", "news_id", "text_sha1"], how="left")
     todo = merged["score"].isna().to_numpy()
     if todo.any():
-        merged.loc[todo, "score"] = score_fn(merged.loc[todo, "text"].tolist())
+        texts = merged.loc[todo, "text"].tolist()
+        scores, confidence = _split(score_fn(texts), len(texts))
+        merged.loc[todo, "score"] = scores
+        merged.loc[todo, "confidence"] = confidence
     merged["score"] = merged["score"].astype("float64")
+    merged["confidence"] = merged["confidence"].astype("float64")
     merged["model_version"] = version
     return merged, {"reused": int((~todo).sum()), "scored": int(todo.sum())}
 
 
 def finalise(scored: pd.DataFrame, neutral_band: float) -> pd.DataFrame:
-    """Add label and confidence (probability of the predicted binary class)."""
+    """Add the label (neutral band applied); keep the model's own confidence."""
     out = scored.copy()
     out["label"] = labels_for(out["score"].to_numpy(), neutral_band).astype(str)
-    out["confidence"] = np.round((1 + out["score"].abs()) / 2, 6)
+    if "confidence" not in out.columns:
+        out["confidence"] = np.round((1 + out["score"].abs()) / 2, 6)
     return (
         out[SCORE_COLUMNS]
         .sort_values(["ticker", "news_id"], kind="mergesort")
@@ -220,33 +247,49 @@ def publish(db: Any, scored: pd.DataFrame, weekly: pd.DataFrame, run_id: str) ->
     return counts
 
 
+def resolve_production(params: dict[str, Any], root: Path) -> dict[str, Any]:
+    """Production sentiment model: pointer from the promotion report + local path."""
+    from finsight.registry.pointer import (  # noqa: PLC0415
+        load_promotion,
+        local_model_dir,
+        production_entry,
+    )
+
+    entry = production_entry(load_promotion(root / params["promotion_report"]), "sentiment")
+    candidate = params["candidates"][entry["candidate"]]
+    path = local_model_dir(entry, root / candidate["model_dir"], root / "models" / "registry_cache")
+    return {**entry, "path": path}
+
+
 def run_scoring(
     params: dict[str, Any],
     news_path: Path,
     root: Path,
-    score_fn: Callable[[list[str]], np.ndarray] | None = None,
+    score_fn: ScoreFn | None = None,
+    production: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Score, aggregate and write the stage outputs (Mongo publishing is separate).
 
     Args:
-        params: The ``sentiment`` section of ``params.yaml``.
+        params: The ``sentiment`` section of ``params.yaml`` (+ ``promotion_report``).
         news_path: Processed news directory.
         root: Project root.
-        score_fn: Injected scorer (tests); defaults to the packaged pyfunc model.
+        score_fn: Injected scorer (tests); defaults to the production pyfunc model.
+        production: Injected production pointer (tests); default: the promotion report.
     """
-    run_info = json.loads((root / params["model_dir"] / "run.json").read_text(encoding="utf-8"))
-    version, band = run_info["model_version"], float(run_info["neutral_band"])
+    production = production or resolve_production(params, root)
+    version, band = production["model_version"], float(production["neutral_band"])
     if score_fn is None:
         import mlflow  # noqa: PLC0415
-
-        model = mlflow.pyfunc.load_model(str(root / params["model_dir"] / "model"))
-        model.unwrap_python_model().scorer.batch_size = int(params["batch_size"])
         import torch  # noqa: PLC0415
 
+        model = mlflow.pyfunc.load_model(str(production["path"]))
+        model.unwrap_python_model().scorer.batch_size = int(params["batch_size"])
         torch.set_num_threads(int(params["torch_threads"]))
 
-        def score_fn(texts: list[str]) -> np.ndarray:
-            return model.predict(pd.DataFrame({"text": texts}))["score"].to_numpy()
+        def score_fn(texts: list[str]) -> tuple[np.ndarray, np.ndarray]:
+            out = model.predict(pd.DataFrame({"text": texts}))
+            return out["score"].to_numpy(), out["confidence"].to_numpy()
 
     news = load_news(news_path)
     cache_path = root / params["scores_path"]
@@ -277,7 +320,9 @@ def run_scoring(
         "share_negative": round(float(shares.get(NEGATIVE, 0.0)), 4),
         "share_neutral": round(float(shares.get(NEUTRAL, 0.0)), 4),
     }
-    return {"report": report, "scored": scored, "weekly": weekly, "run_id": run_info["run_id"]}
+    report["production_version"] = production.get("version")
+    report["candidate"] = production.get("candidate")
+    return {"report": report, "scored": scored, "weekly": weekly, "run_id": production["run_id"]}
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -287,7 +332,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     settings = get_settings()
     configure_logging("score_sentiment", settings.log_level, settings.root / "logs")
-    params = settings.section("sentiment")
+    params = {
+        **settings.section("sentiment"),
+        "promotion_report": settings.section("registry")["report"],
+    }
     news_path = settings.root / settings.section("etl")["processed_news_path"]
     try:
         with stage_run("score_sentiment", settings) as run:
