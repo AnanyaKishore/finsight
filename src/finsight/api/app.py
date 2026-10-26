@@ -3,6 +3,7 @@
 Endpoints (I/O contracts in :mod:`finsight.api.schemas`, live docs at ``/docs``):
 
 =================================  ==============================================
+``GET  /api/stocks``                the 10-stock universe (portal home page)
 ``GET  /api/search?q=``             type-ahead over the 10-stock universe
 ``GET  /api/stock/{ticker}``        overview + price history (``period`` filter)
 ``GET  /api/prediction/{ticker}``   14-day LSTM forecast (via ``lstm-serve``)
@@ -222,6 +223,16 @@ def create_app(  # noqa: C901 -- one function keeps every route visible in one p
         return s.ModelRef(name=name, version=info.get("version"), run_id=info.get("run_id"))
 
     # ----------------------------------------------------------------- routes
+    @app.get("/api/stocks", response_model=s.StockListResponse, tags=["stocks"])
+    def stocks() -> s.StockListResponse:
+        """Every stock FinSight analyses, in configuration order."""
+        return s.StockListResponse(
+            stocks=[
+                s.StockInfo(symbol=t.symbol, name=t.name, sector=t.sector)
+                for t in universe.values()
+            ]
+        )
+
     @app.get("/api/search", response_model=s.SearchResponse, tags=["stocks"])
     def search(
         q: str = Query(min_length=1, max_length=40), limit: int = Query(10, ge=1, le=10)

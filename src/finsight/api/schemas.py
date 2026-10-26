@@ -51,6 +51,20 @@ class SearchResponse(BaseModel):
     results: list[SearchHit]
 
 
+class StockInfo(BaseModel):
+    """One stock of the universe (home-page list)."""
+
+    symbol: str
+    name: str
+    sector: str
+
+
+class StockListResponse(BaseModel):
+    """``GET /api/stocks``: the whole universe, in configuration order."""
+
+    stocks: list[StockInfo]
+
+
 # ------------------------------------------------------------------- stock
 class PricePoint(BaseModel):
     """One end-of-day bar."""

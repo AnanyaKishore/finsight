@@ -3,7 +3,7 @@
 # Load .env (if present) so targets can use the same variables as compose.
 -include .env
 export
-.PHONY: help install lint format test test-int up down mongo-shell ingest-plan backfill incremental status build repro dag eda benchmark train plots sentiment portfolio feature-experiment mlflow-ui register serve api-dev rollback-lstm
+.PHONY: help install lint format test test-int up down mongo-shell ingest-plan backfill incremental status build repro dag eda benchmark train plots sentiment portfolio feature-experiment mlflow-ui register serve api-dev rollback-lstm frontend web-dev
 
 help:            ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*## "}{printf "  %-20s %s\n",$$1,$$2}'
@@ -82,6 +82,12 @@ register:        ## register new model versions + run the promotion gate (throug
 
 serve:           ## build + start model servers and the backend (API docs: http://localhost:8000/docs)
 	docker compose up -d --build lstm-serve sentiment-serve backend
+
+frontend:        ## build + start the web portal at http://localhost:8080
+	docker compose up -d --build frontend
+
+web-dev:         ## serve frontend/ locally without Docker (needs the backend on :8000)
+	python -m http.server 8080 --bind 127.0.0.1 -d frontend
 
 api-dev:         ## run the backend locally with auto-reload-free uvicorn (needs serving up)
 	python -m finsight.api

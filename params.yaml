@@ -151,6 +151,7 @@ sentiment:
   seed: 42
   max_length: 256            # tokens; headline + summary is <= 1,000 characters
   batch_size: 32
+  checkpoint_every: 500      # articles per chunk: progress line + resumable checkpoint
   torch_threads: 6
   top_headlines: 3           # per week and side: the explanation shown in the portal
   experiment_name: finsight-sentiment

@@ -18,10 +18,18 @@ The machine-readable API contract is [`docs/api/openapi.json`](api/openapi.json)
 | Tickers | Case-insensitive path parameter; must be one of the 10 symbols in `configs/tickers.yaml` |
 | Errors | Always `{"error": {"code", "message", "request_id"}}` with a stable `code` (table §3) |
 | Tracing | Every response has `X-Request-ID` (echoed if the client sent one); every request is one JSON log line |
-| CORS | Only origins in `FRONTEND_ORIGINS` (default `http://localhost:8080`); methods `GET`, `POST` |
+| CORS | Only origins in `FRONTEND_ORIGINS` (default `http://localhost:8080` and `http://127.0.0.1:8080`); methods `GET`, `POST` |
 | Auth | None (single-user, localhost-bound deployment); every port is bound to `127.0.0.1` |
 
 ## 2. Endpoints
+
+### 2.0 `GET /api/stocks`
+The whole universe in configuration order (portal home page). No parameters.
+
+```json
+{"stocks": [{"symbol": "AAPL", "name": "Apple", "sector": "Technology"}, "…"]}
+```
+Status: `200`.
 
 ### 2.1 `GET /api/search?q={text}&limit={n}`
 Type-ahead over the fixed universe.
@@ -208,7 +216,31 @@ and the matching serving container must be restarted.
 
 Verified in the Day 5 rehearsal (lstm-serve stopped → stored forecast served, unseen ticker → 503, health `degraded`, `finsight_dependency_up{dependency="lstm-serve"} 0`).
 
-## 8. Code structure
+## 8. Web portal (Day 6)
+
+| Aspect | Design |
+|---|---|
+| Delivery | Static files in `frontend/`, served by `nginx-unprivileged` (uid 101, port 8080). No build step. |
+| Coupling | The browser calls the backend directly at `BACKEND_URL`; nginx generates `/config.js` (`window.FINSIGHT_CONFIG`) from the environment at start-up. A malformed URL stops the container (`15-finsight-check-env.sh`). |
+| Security | CSP `default-src 'self'`, `connect-src 'self' <BACKEND_URL>`, no third-party hosts (Chart.js 4.4.7 is vendored, MIT); `X-Frame-Options: DENY`; `nosniff`; `no-referrer`. All API text is HTML-escaped; only `http(s)` headline URLs become links. |
+| Routing | Hash routes: `#/` overview, `#/stock/{SYMBOL}`; unknown symbols show a "not covered" page. |
+| Client resilience | 15 s timeout per call (30 s for forecasts and analysis); GETs retried twice with exponential backoff (400 ms, 800 ms + jitter) on network errors, 502 and 504; requests are cancelled on navigation and stale answers are dropped. |
+| States | Each card loads independently with a skeleton, an empty state and an error state with *Try again*; the header pill polls `/api/health` every 30 s (green / amber / red). |
+| Charts | One y-axis per chart; price (line), forecast (solid history + dashed forecast), weekly sentiment (bars, −1…+1, by sign) with article counts as a separate chart, allocation (doughnut, ≤ 7 slices). Each chart has a hover tooltip and a data-table view. |
+| Accessibility | Combobox search (↓ ↑ Enter Esc, `/` to focus), radio-group period controls with arrow keys, skip link, `aria-live` regions, colour never the only cue (arrows, signs, labels), light and dark mode, mobile layout (checked at 390 px). |
+
+| Screen element | Endpoint |
+|---|---|
+| Stock tiles | `GET /api/stocks` |
+| Search box | `GET /api/search` (150 ms debounce) |
+| Overview + price chart | `GET /api/stock/{t}?period=` |
+| Forecast chart | `GET /api/prediction/{t}` + `GET /api/model-info` (back-test tags) |
+| Sentiment charts + headlines | `GET /api/sentiment/{t}?weeks=` |
+| Portfolio card | `GET /api/portfolio` |
+| "Try the sentiment model" | `POST /api/sentiment/analyze` |
+| Status pill | `GET /api/health`, `GET /api/model-info` |
+
+## 9. Code structure
 
 | Package | Responsibility |
 |---|---|
@@ -222,3 +254,4 @@ Verified in the Day 5 rehearsal (lstm-serve stopped → stored forecast served, 
 | `finsight.registry` | gate rules, registration stage, rollback CLI, production pointer |
 | `finsight.api` | FastAPI app, schemas, repository, model client, metrics, entry point |
 | `finsight.ci` | unit-test gate stage |
+| `frontend/` | portal pages (`index.html`, `help.html`), `assets/js` (`api`, `search`, `charts`, `format`, `app`), `nginx/` template + start-up check |

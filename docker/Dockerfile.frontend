@@ -1,0 +1,34 @@
+# --------------------------------------------------------------------------- #
+# FinSight portal image: static HTML/CSS/JS served by nginx (no build step,
+# no Node.js). The backend URL is runtime configuration: config.js is generated
+# from BACKEND_URL when the container starts, so one image serves any backend.
+#
+# Base image: nginx-unprivileged runs as uid 101 and listens on 8080, so the
+# container never runs as root.
+# --------------------------------------------------------------------------- #
+FROM nginxinc/nginx-unprivileged:1.28-alpine
+LABEL org.opencontainers.image.title="finsight-frontend" \
+      org.opencontainers.image.description="FinSight web portal"
+
+# Defaults for running the image on its own; compose overrides them.
+ENV BACKEND_URL=http://localhost:8000 \
+    MLFLOW_UI_URL=http://localhost:5000
+
+# Two worker processes are plenty for one user; the default ("auto") starts
+# one per CPU core (12 on the target laptop) for no benefit.
+USER root
+RUN sed -i 's/^worker_processes.*/worker_processes 2;/' /etc/nginx/nginx.conf
+USER nginx
+
+# The template replaces the image's default site (envsubst -> conf.d/default.conf).
+COPY frontend/nginx/default.conf.template /etc/nginx/templates/default.conf.template
+COPY --chmod=755 frontend/nginx/15-finsight-check-env.sh /docker-entrypoint.d/15-finsight-check-env.sh
+
+# The site itself. config.js in the repo is only for local development
+# (python -m http.server); in the container nginx generates it instead.
+COPY frontend/index.html frontend/help.html /usr/share/nginx/html/
+COPY frontend/assets/ /usr/share/nginx/html/assets/
+
+EXPOSE 8080
+HEALTHCHECK --interval=15s --timeout=3s --start-period=5s --retries=5 \
+  CMD wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1

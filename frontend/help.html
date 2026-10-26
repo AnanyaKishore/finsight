@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FinSight · User guide</title>
+  <link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html#/" aria-label="Back to FinSight">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7"/><path d="M7 22l6-7 5 4 7-9"/></svg>
+        <span>FinSight</span>
+      </a>
+      <nav class="topnav" aria-label="Main"><a href="index.html#/">Back to the portal</a></nav>
+    </div>
+  </header>
+  <div class="disclaimer-bar" role="note"><strong>Not investment advice.</strong>
+    FinSight shows analytical estimates for learning and research only.</div>
+
+  <main id="main" class="help">
+    <h1>User guide</h1>
+    <p class="page-intro">FinSight brings three analyses of ten large US stocks together on one page: where the price
+      has been, where a model thinks it may go over the next two weeks, and whether recent news about the company is
+      positive or negative. It also suggests one way of splitting money across the ten stocks.</p>
+
+    <div class="grid">
+      <section class="card span-12">
+        <h2>Finding a stock</h2>
+        <ol>
+          <li>Click the search box at the top (or press <kbd>/</kbd>) and start typing a company name, its ticker
+            symbol (for example <em>AAPL</em>) or a product (for example <em>iPhone</em>).</li>
+          <li>Pick a suggestion with the mouse, or with the <kbd>↓</kbd> and <kbd>↑</kbd> keys and <kbd>Enter</kbd>.
+            <kbd>Esc</kbd> closes the list.</li>
+          <li>You can also click any of the ten stocks on the overview page.</li>
+        </ol>
+        <p>FinSight covers Apple, Microsoft, Alphabet, Amazon, Tesla, NVIDIA, Meta, JPMorgan Chase, Walmart and Visa.</p>
+      </section>
+
+      <section class="card span-6">
+        <h2>The stock page</h2>
+        <ul>
+          <li><strong>Overview:</strong> the latest closing price and the change from the day before. Green with an
+            upward arrow means the price rose, red with a downward arrow means it fell. Prices are end-of-day, not live.</li>
+          <li><strong>Price history:</strong> choose 1 week (1W) up to 1 year (1Y). Hover over the line to read the price on
+            a day. “Show the prices as a table” lists every value.</li>
+          <li><strong>14-day forecast:</strong> the solid line is the real price; the dashed line is the model’s estimate
+            for the next 14 trading days. The text under the chart says how accurate the model was in testing, compared
+            with simply assuming the price will not change.</li>
+          <li><strong>News sentiment:</strong> each bar is one week. Bars above the middle line mean news was mostly
+            positive, bars below mean mostly negative. The small chart underneath shows how many articles there were.
+            Click a bar to see the headlines behind it.</li>
+        </ul>
+      </section>
+
+      <section class="card span-6">
+        <h2>The optimised portfolio</h2>
+        <p>The pie chart shows how a sum of money would be split across the stocks to get the best balance of return
+          and risk (the highest <em>Sharpe ratio</em>) over the last 30 trading days. It is recalculated once a day.</p>
+        <ul>
+          <li><strong>Sharpe ratio:</strong> return earned per unit of risk. Higher is better.</li>
+          <li><strong>Expected return:</strong> the yearly return the 30-day window suggests.</li>
+          <li><strong>Volatility:</strong> how much the portfolio’s value swings, per year. Lower is calmer.</li>
+        </ul>
+        <p>The <strong>reality check</strong> under the chart repeats the same method week by week over the past year
+          and compares it with splitting money equally. Read it before trusting the pie.</p>
+      </section>
+
+      <section class="card span-6">
+        <h2>Trying the sentiment model</h2>
+        <p>On the overview page, paste one or more headlines (one per line) and press <strong>Analyse</strong> (or
+          <kbd>Ctrl</kbd>+<kbd>Enter</kbd>). Each line gets a label (positive, negative or neutral), a score from −1 to +1,
+          and the model’s confidence.</p>
+      </section>
+
+      <section class="card span-6">
+        <h2>When something is not working</h2>
+        <ul>
+          <li>The dot at the top right shows the system status: green is normal, amber means one part is down,
+            red means the portal cannot reach the server. Click it for details.</li>
+          <li>If a section says it could not load, press <strong>Try again</strong>. Other sections keep working.</li>
+          <li>If the forecasting model is down, you will see the last saved forecast, clearly marked as a saved copy.</li>
+          <li>A stock that is not one of the ten shows a “not covered” page.</li>
+        </ul>
+      </section>
+
+      <section class="card span-12">
+        <h2>Important</h2>
+        <p>FinSight is a course project that demonstrates how machine-learning models are built and operated. Its
+          forecasts and scores are estimates that are often wrong, and markets can move for reasons no model sees.
+          Nothing here is a recommendation to buy or sell. Past performance does not guarantee future results.</p>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

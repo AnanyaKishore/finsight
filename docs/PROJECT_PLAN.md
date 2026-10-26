@@ -126,7 +126,7 @@ metrics, stored forecasts, graceful degradation), `docs/LLD.md` + `docs/api/open
 - Prometheus client metrics in the backend (request count/latency histogram/errors, model-call latency).
 - Draft `docs/LLD.md` from the OpenAPI schema.
 
-### Day 6 — Mon 26 Oct · Frontend
+### Day 6 — Mon 26 Oct · Frontend ✅
 **Role:** the user-facing portal (3 rubric points).
 - Separate nginx container; `config.js` generated at start-up from `BACKEND_URL`.
 - Type-ahead search, overview card (price, change, green/red), price chart with 1W/1M/3M/6M/1Y, portfolio pie + Sharpe/return/volatility, weekly sentiment bars + article counts, prediction chart (history + dashed 14-day forecast), model "as of" timestamps.

@@ -8,7 +8,8 @@
 #   lstm-serve       MLflow model server: models:/finsight-lstm@production       (Day 5)
 #   sentiment-serve  MLflow model server: models:/finsight-sentiment@production  (Day 5)
 #   backend          FastAPI REST API + Prometheus /metrics                      (Day 5)
-# Later days add: frontend, scheduler, prometheus, alertmanager, grafana,
+#   frontend         nginx: the web portal at http://localhost:8080              (Day 6)
+# Later days add: scheduler, prometheus, alertmanager, grafana,
 # node-exporter, mongodb-exporter.
 #
 # Memory budget (8 GB laptop): every service gets an explicit mem_limit so the
@@ -133,10 +134,11 @@ services:
     networks: [finsight]
 
   sentiment-serve:
-    build:                        # same image as lstm-serve (second build is a cache hit)
-      context: .
-      dockerfile: docker/Dockerfile.serve
+    # Reuses the image lstm-serve builds (no build: section of its own). Two
+    # build sections for one tag made Compose build it twice and leave a ~2 GB
+    # untagged copy behind. Build it with lstm-serve, e.g. `make serve`.
     image: finsight/serve:${FINSIGHT_VERSION:-dev}
+    pull_policy: never            # local image only; never look for it on Docker Hub
     container_name: finsight-sentiment-serve
     restart: unless-stopped
     environment:
@@ -174,7 +176,7 @@ services:
       MLFLOW_HTTP_REQUEST_TIMEOUT: "5"
       LSTM_SERVE_URL: http://lstm-serve:5001
       SENTIMENT_SERVE_URL: http://sentiment-serve:5002
-      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:8080}
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080}
     ports:
       - "127.0.0.1:8000:8000"     # API + docs at http://localhost:8000/docs
     depends_on:
@@ -183,6 +185,34 @@ services:
       # Not waiting for the model servers on purpose: the API starts and
       # reports "degraded" until they are up (graceful degradation).
     mem_limit: 384m
+    networks: [finsight]
+
+  # ------------------------------------------------------------- Day 6 ----
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    image: finsight/frontend:${FINSIGHT_VERSION:-dev}
+    container_name: finsight-frontend
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Asia/Kolkata}
+      # Where the *browser* finds the API (loose coupling: the portal is static
+      # files; config.js is generated from this at container start-up).
+      # Must also be allowed by the backend's FRONTEND_ORIGINS (CORS).
+      BACKEND_URL: ${BACKEND_URL:-http://localhost:8000}
+      MLFLOW_UI_URL: ${MLFLOW_UI_URL:-http://localhost:5000}
+    ports:
+      - "127.0.0.1:8080:8080"     # the portal: http://localhost:8080
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    # Deliberately no depends_on: backend. The portal loads on its own and
+    # shows "API unreachable" with a retry button until the backend is up.
+    mem_limit: 64m                # nginx serving static files needs ~5-10 MB
     networks: [finsight]
 
 volumes:

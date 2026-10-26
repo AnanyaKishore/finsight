@@ -371,3 +371,86 @@ def test_scoring_uses_the_production_candidate(sentiment_project):
     assert second["report"]["scored_this_run"] == 0  # everything reused from the cache
     pd.testing.assert_frame_equal(first["scored"], second["scored"])
     assert first["scored"]["week_start"].iloc[0] <= date(2026, 8, 31)
+
+
+# ------------------------------------------------- progress + checkpoints (Day 6)
+def test_chunked_scoring_matches_one_shot_and_goes_shortest_first(tmp_path):
+    news = sc.load_news(_write_news(tmp_path))
+    empty = sc.load_cache(tmp_path / "none.parquet")
+
+    def fake(texts):
+        return np.array([len(t) / 1000 for t in texts])
+
+    one_shot, _ = sc.score_incremental(news, empty, "v1", fake)
+    seen, calls = [], []
+
+    def recording(texts):
+        calls.append([len(t) for t in texts])
+        return fake(texts)
+
+    chunked, counts = sc.score_incremental(
+        news, empty, "v1", recording, chunk_size=3, on_chunk=lambda rows, p: seen.append((rows, p))
+    )
+    pd.testing.assert_frame_equal(one_shot, chunked)
+    assert counts == {"reused": 0, "scored": len(news)}
+    assert all(len(c) <= 3 for c in calls)
+    lengths = [n for c in calls for n in c]
+    assert lengths == sorted(lengths)  # shortest first, across chunks
+    rows, last = seen[-1]
+    assert last.done == last.total == len(news) and last.done_chars == last.total_chars
+    assert len(rows) == len(news) and list(rows.columns) == sc.CACHE_COLUMNS
+    assert [p.done for _, p in seen] == sorted(p.done for _, p in seen)
+
+
+def _scoring_params(tmp_path):
+    return {
+        "scores_path": "data/sentiment/article_scores.parquet",
+        "weekly_path": "data/sentiment/weekly.parquet",
+        "top_headlines": 2,
+        "checkpoint_every": 4,
+    }
+
+
+def test_interrupted_scoring_resumes_from_checkpoint(tmp_path):
+    news_dir = _write_news(tmp_path)
+    params = _scoring_params(tmp_path)
+    (tmp_path / "data/sentiment").mkdir(parents=True)
+    production = {"model_version": "v1", "neutral_band": 0.3, "run_id": "r1", "version": "1"}
+    cache_path = tmp_path / params["scores_path"]
+    partial = sc.checkpoint_path(cache_path)
+    calls = []
+
+    def fake(texts):
+        calls.append(len(texts))
+        return np.array([((len(t) % 7) - 3) / 4 for t in texts])
+
+    def crashes_on_second_chunk(texts):
+        if calls:
+            raise RuntimeError("laptop went to sleep")
+        return fake(texts)
+
+    with pytest.raises(RuntimeError):
+        sc.run_scoring(params, news_dir, tmp_path, crashes_on_second_chunk, production)
+    assert partial.exists() and not cache_path.exists()
+    assert len(pd.read_parquet(partial)) == 4  # the first chunk survived
+
+    calls.clear()
+    resumed = sc.run_scoring(params, news_dir, tmp_path, fake, production)
+    total = resumed["report"]["articles"]
+    assert resumed["report"]["scored_this_run"] == total - 4 == sum(calls)
+    assert resumed["report"]["reused_from_cache"] == 4
+    assert cache_path.exists() and not partial.exists()
+
+    fresh_root = tmp_path / "fresh"
+    (fresh_root / "data/sentiment").mkdir(parents=True)
+    fresh = sc.run_scoring(params, news_dir, fresh_root, fake, production)
+    pd.testing.assert_frame_equal(resumed["scored"], fresh["scored"])
+
+
+def test_progress_estimates_time_left_from_characters():
+    now = [100.0]
+    progress = sc.ProgressLogger(total=10, total_chars=1000, clock=lambda: now[0], started=100.0)
+    now[0] = 110.0
+    fields = progress(done=5, done_chars=250)  # half the articles, a quarter of the text
+    assert fields["percent"] == 50.0 and fields["articles_per_s"] == 0.5
+    assert fields["eta_s"] == 30  # 750 chars left at 25 chars/s, not 10 s

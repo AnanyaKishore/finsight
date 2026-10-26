@@ -37,6 +37,7 @@ finsight/
 │   ├── portfolio/              # MPT grid search, SciPy check, walk-forward backtest, publishing
 │   ├── registry/               # promotion gate, register stage, rollback CLI, production pointer
 │   └── api/                    # FastAPI backend: routes, schemas, Mongo repository, model client, metrics
+├── frontend/                   # web portal: static HTML/CSS/JS + nginx template (Day 6)
 ├── tests/{unit,integration}/   # pytest suites
 ├── notebooks/01_eda.ipynb      # exploratory data analysis (built by scripts/build_eda_notebook.py)
 ├── scripts/                    # preflight check, notebook builder
@@ -238,7 +239,7 @@ After a MongoDB reset, re-publish with `dvc repro -f score_sentiment optimize_po
   evaluate_sentiment@finbert ────────────┘   (MLflow registry: @production / @staging)
 
 MLflow registry ──► lstm-serve :5001 ┐
-                ──► sentiment-serve :5002 ┼─► backend :8000 ◄── frontend (Day 6)
+                ──► sentiment-serve :5002 ┼─► backend :8000 ◄── frontend :8080
 MongoDB ─────────────────────────────────┘     /metrics ◄── Prometheus (Day 8)
 ```
 
@@ -275,6 +276,61 @@ curl -s localhost:8000/api/model-info               # (registry cache: up to 60 
 python -m finsight.registry.rollback --model sentiment --to-version <original> --reason "end of drill" --keep-eligible
 docker compose restart sentiment-serve && dvc repro # pointer restored; nothing is re-scored
 ```
+
+## Day 6 runbook — the web portal
+
+```
+browser ──► frontend :8080 (nginx, static files + generated /config.js)
+   │
+   └──── fetch(BACKEND_URL + /api/...) ──► backend :8000 ──► Mongo, lstm-serve, sentiment-serve, MLflow
+```
+
+The portal is plain HTML, CSS and JavaScript (no build step, no Node.js). nginx
+serves it and generates `/config.js` from `BACKEND_URL` at start-up, so the same
+image works against any backend. The browser calls the API directly; the
+backend's CORS list (`FRONTEND_ORIGINS`) must contain the portal's address.
+
+```bash
+pip install -r requirements/dev.txt                  # nothing new; refreshes the editable install
+docker image prune -f                                # removes the untagged ~2 GB serving image from Day 5
+pytest tests/unit -q                                 # expect all to pass (~150)
+dvc repro                                            # score_sentiment re-runs once (its code changed): scored_this_run 0
+docker compose up -d --build lstm-serve sentiment-serve backend frontend
+docker compose ps                                    # frontend healthy within seconds
+# open http://localhost:8080
+```
+
+| What to try | Where |
+|---|---|
+| Type-ahead search: "app", "iphone", "nv"; ↓/↑/Enter/Esc; `/` focuses the box | header |
+| Overview card: price, daily change, green/red arrow | stock page |
+| Price history with 1W/1M/3M/6M/1Y (arrow keys switch period) | stock page |
+| 14-day forecast (dashed) after 60 days of history, back-test caption | stock page |
+| Weekly sentiment bars + article counts; click a bar for its headlines | stock page |
+| Portfolio pie, Sharpe / return / volatility, walk-forward reality check | overview |
+| Live sentiment model ("Try the sentiment model") | overview |
+| System status pill: green / amber (degraded) / red (API unreachable) | header |
+
+**Graceful degradation drill** (screenshots for the report):
+```bash
+docker compose stop lstm-serve       # status pill turns amber; forecasts show the saved copy (or a clear error)
+docker compose start lstm-serve
+docker compose stop backend          # every card shows "Cannot reach the FinSight API" + Try again
+docker compose start backend
+```
+
+**Long sentiment re-scores now report progress** (`dvc repro` output), e.g.
+`scored 1500/11015 (13.6%), 18.2 articles/s, ~9 min left`, and save a checkpoint
+every 500 articles. If a run is interrupted, the next `dvc repro` resumes from
+`data/sentiment/article_scores.partial.parquet` instead of starting over.
+
+**Serving another backend address:** set `BACKEND_URL` (what the browser uses)
+and add the portal's address to `FRONTEND_ORIGINS` in `.env`, then
+`docker compose up -d frontend backend`. A malformed `BACKEND_URL` stops the
+frontend container at start-up with a clear message.
+
+**Developing the portal without Docker:** `make web-dev` serves `frontend/` at
+http://localhost:8080 with Python's built-in server (uses `frontend/config.js`).
 
 ---
 

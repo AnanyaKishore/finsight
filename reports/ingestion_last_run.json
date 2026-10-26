@@ -1,107 +1,26 @@
 {
-  "run_id": "89aa5104bdc5",
+  "run_id": "580fe081f629",
   "mode": "incremental",
-  "started_at": "2026-10-24 06:23:56.527649+00:00",
+  "started_at": "2026-10-26 13:15:09.319999+00:00",
   "pipeline": "ingestion",
   "status": "success",
-  "finished_at": "2026-10-24 06:24:15.128219+00:00",
-  "duration_s": 18.601,
+  "finished_at": "2026-10-26 13:15:24.254911+00:00",
+  "duration_s": 14.935,
   "prices": {
-    "fetched": 10,
-    "inserted": 10,
+    "fetched": 0,
+    "inserted": 0,
     "updated": 0,
-    "per_ticker": {
-      "AAPL": {
-        "from": "2026-10-23",
-        "to": "2026-10-23",
-        "provider": "marketstack",
-        "rows": 1,
-        "inserted": 1,
-        "updated": 0
-      },
-      "MSFT": {
-        "from": "2026-10-23",
-        "to": "2026-10-23",
-        "provider": "marketstack",
-        "rows": 1,
-        "inserted": 1,
-        "updated": 0
-      },
-      "GOOGL": {
-        "from": "2026-10-23",
-        "to": "2026-10-23",
-        "provider": "marketstack",
-        "rows": 1,
-        "inserted": 1,
-        "updated": 0
-      },
-      "AMZN": {
-        "from": "2026-10-23",
-        "to": "2026-10-23",
-        "provider": "marketstack",
-        "rows": 1,
-        "inserted": 1,
-        "updated": 0
-      },
-      "TSLA": {
-        "from": "2026-10-23",
-        "to": "2026-10-23",
-        "provider": "marketstack",
-        "rows": 1,
-        "inserted": 1,
-        "updated": 0
-      },
-      "NVDA": {
-        "from": "2026-10-23",
-        "to": "2026-10-23",
-        "provider": "marketstack",
-        "rows": 1,
-        "inserted": 1,
-        "updated": 0
-      },
-      "META": {
-        "from": "2026-10-23",
-        "to": "2026-10-23",
-        "provider": "marketstack",
-        "rows": 1,
-        "inserted": 1,
-        "updated": 0
-      },
-      "JPM": {
-        "from": "2026-10-23",
-        "to": "2026-10-23",
-        "provider": "marketstack",
-        "rows": 1,
-        "inserted": 1,
-        "updated": 0
-      },
-      "WMT": {
-        "from": "2026-10-23",
-        "to": "2026-10-23",
-        "provider": "marketstack",
-        "rows": 1,
-        "inserted": 1,
-        "updated": 0
-      },
-      "V": {
-        "from": "2026-10-23",
-        "to": "2026-10-23",
-        "provider": "marketstack",
-        "rows": 1,
-        "inserted": 1,
-        "updated": 0
-      }
-    }
+    "per_ticker": {}
   },
   "news": {
-    "fetched": 320,
-    "inserted": 302,
+    "fetched": 328,
+    "inserted": 280,
     "updated": 0,
     "per_ticker": {
       "AAPL": {
         "windows": 1,
         "rows": 40,
-        "inserted": 37,
+        "inserted": 21,
         "errors": 0
       },
       "MSFT": {
@@ -113,13 +32,13 @@
       "GOOGL": {
         "windows": 1,
         "rows": 40,
-        "inserted": 37,
+        "inserted": 39,
         "errors": 0
       },
       "AMZN": {
         "windows": 1,
         "rows": 40,
-        "inserted": 39,
+        "inserted": 29,
         "errors": 0
       },
       "TSLA": {
@@ -131,44 +50,41 @@
       "NVDA": {
         "windows": 1,
         "rows": 40,
-        "inserted": 38,
+        "inserted": 40,
         "errors": 0
       },
       "META": {
         "windows": 1,
         "rows": 40,
-        "inserted": 39,
+        "inserted": 29,
         "errors": 0
       },
       "JPM": {
+        "windows": 1,
+        "rows": 19,
+        "inserted": 18,
+        "errors": 0
+      },
+      "WMT": {
+        "windows": 1,
+        "rows": 11,
+        "inserted": 10,
+        "errors": 0
+      },
+      "V": {
         "windows": 1,
         "rows": 18,
         "inserted": 17,
-        "errors": 0
-      },
-      "WMT": {
-        "windows": 1,
-        "rows": 11,
-        "inserted": 9,
-        "errors": 0
-      },
-      "V": {
-        "windows": 1,
-        "rows": 11,
-        "inserted": 9,
         "errors": 0
       }
     }
   },
   "api_calls": {
-    "marketstack": 10,
     "finnhub": 10
   },
-  "provider_rows": {
-    "marketstack": 10
-  },
+  "provider_rows": {},
   "errors": [],
-  "tasks_ok": 20,
+  "tasks_ok": 10,
   "tasks_skipped": 0,
-  "throughput_rows_per_s": 17.74
+  "throughput_rows_per_s": 21.96
 }

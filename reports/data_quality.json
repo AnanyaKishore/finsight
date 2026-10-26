@@ -295,7 +295,7 @@
     {
       "details": {
         "min_articles_per_week": 5,
-        "weeks_checked": 25
+        "weeks_checked": 26
       },
       "name": "news.weekly_coverage",
       "observed": {},
@@ -305,7 +305,7 @@
     {
       "details": null,
       "name": "news.summary_present_fraction",
-      "observed": 0.9907,
+      "observed": 0.9903,
       "severity": "info",
       "success": true
     }
@@ -320,9 +320,9 @@
         "2026-06-10"
       ],
       "missing_trading_days": 2,
-      "news_articles": 1154,
+      "news_articles": 1175,
       "news_thin_weeks": 0,
-      "news_weeks": 27,
+      "news_weeks": 28,
       "outlier_days": 1,
       "price_field": "adj_close",
       "return_mean": 0.001116,
@@ -343,9 +343,9 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1163,
+      "news_articles": 1192,
       "news_thin_weeks": 0,
-      "news_weeks": 26,
+      "news_weeks": 27,
       "outlier_days": 1,
       "price_field": "adj_close",
       "return_mean": 0.000442,
@@ -366,9 +366,9 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1162,
+      "news_articles": 1201,
       "news_thin_weeks": 0,
-      "news_weeks": 26,
+      "news_weeks": 27,
       "outlier_days": 0,
       "price_field": "adj_close",
       "return_mean": 0.000983,
@@ -389,9 +389,9 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1116,
+      "news_articles": 1134,
       "news_thin_weeks": 0,
-      "news_weeks": 27,
+      "news_weeks": 28,
       "outlier_days": 0,
       "price_field": "adj_close",
       "return_mean": 0.000439,
@@ -411,9 +411,9 @@
         "2026-06-10"
       ],
       "missing_trading_days": 2,
-      "news_articles": 1178,
+      "news_articles": 1207,
       "news_thin_weeks": 0,
-      "news_weeks": 26,
+      "news_weeks": 27,
       "outlier_days": 1,
       "price_field": "close",
       "return_mean": -0.000526,
@@ -435,9 +435,9 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1161,
+      "news_articles": 1200,
       "news_thin_weeks": 0,
-      "news_weeks": 26,
+      "news_weeks": 27,
       "outlier_days": 2,
       "price_field": "adj_close",
       "return_mean": 5.3e-05,
@@ -458,9 +458,9 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1195,
+      "news_articles": 1235,
       "news_thin_weeks": 0,
-      "news_weeks": 26,
+      "news_weeks": 27,
       "outlier_days": 0,
       "price_field": "adj_close",
       "return_mean": 0.000609,
@@ -481,9 +481,9 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1178,
+      "news_articles": 1216,
       "news_thin_weeks": 0,
-      "news_weeks": 27,
+      "news_weeks": 28,
       "outlier_days": 0,
       "price_field": "adj_close",
       "return_mean": -0.000693,
@@ -504,9 +504,9 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1082,
+      "news_articles": 1099,
       "news_thin_weeks": 0,
-      "news_weeks": 27,
+      "news_weeks": 28,
       "outlier_days": 1,
       "price_field": "adj_close",
       "return_mean": 0.000645,
@@ -527,9 +527,9 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1087,
+      "news_articles": 1097,
       "news_thin_weeks": 0,
-      "news_weeks": 27,
+      "news_weeks": 28,
       "outlier_days": 1,
       "price_field": "adj_close",
       "return_mean": 0.000484,

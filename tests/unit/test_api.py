@@ -136,6 +136,23 @@ def test_search_ranks_symbol_name_alias(api):
     assert bad.status_code == 422 and bad.json()["error"]["code"] == "invalid_request"
 
 
+def test_stocks_lists_the_universe_in_config_order(api):
+    client, *_ = api
+    stocks = client.get("/api/stocks").json()["stocks"]
+    assert [x["symbol"] for x in stocks] == [t.symbol for t in get_settings().tickers]
+    assert stocks[0] == {"symbol": "AAPL", "name": "Apple", "sector": "Technology"}
+
+
+def test_default_cors_origins_cover_both_localhost_spellings(monkeypatch):
+    monkeypatch.delenv("FRONTEND_ORIGINS", raising=False)
+    assert ApiConfig.from_env().frontend_origins == (
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+    )
+    monkeypatch.setenv("FRONTEND_ORIGINS", "http://a:1, http://b:2")
+    assert ApiConfig.from_env().frontend_origins == ("http://a:1", "http://b:2")
+
+
 # -------------------------------------------------------------------- stock
 def test_stock_overview_history_and_errors(api):
     client, *_ = api

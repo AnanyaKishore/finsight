@@ -6,8 +6,17 @@ Incremental by design
 does not delete it before the stage runs). Each row carries the article's
 text hash and the model fingerprint (:func:`~finsight.sentiment.scoring.model_version`).
 On every run only articles that are new, whose text changed, or that were
-scored by a different model version are sent through DistilBERT -- the daily
+scored by a different model version are sent through the model -- the daily
 run scores ~50-100 new articles instead of ~10,000.
+
+Progress and checkpoints (Day 6)
+--------------------------------
+A full re-score (e.g. after a new model is promoted) takes 10-60 minutes on a
+laptop. Articles are scored in chunks of ``sentiment.checkpoint_every``; after
+each chunk a progress line is logged (done / total, rate, time left) and every
+score so far is saved to ``article_scores.partial.parquet``. If the run is
+interrupted, the next run reads the checkpoint and only scores what is left.
+The checkpoint is deleted once the stage finishes.
 
 Outputs
 -------
@@ -30,7 +39,7 @@ import time
 from collections.abc import Callable, Sequence
 from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import numpy as np
 import pandas as pd
@@ -81,18 +90,81 @@ CACHE_COLUMNS = ["ticker", "news_id", "text_sha1", "model_version", "score", "co
 ScoreFn = Callable[[list[str]], "np.ndarray | tuple[np.ndarray, np.ndarray]"]
 
 
-def load_cache(path: Path) -> pd.DataFrame:
-    """Previously scored articles (empty frame on the first run).
+def checkpoint_path(cache_path: Path) -> Path:
+    """Where an interrupted run's scores are kept (next to the cache)."""
+    return cache_path.with_name(cache_path.stem + ".partial.parquet")
 
-    Day 4 caches have no ``confidence`` column; they were all written by the
-    two-label DistilBERT, for which confidence = (1 + |score|) / 2 exactly.
-    """
-    if not path.exists():
-        return pd.DataFrame(columns=CACHE_COLUMNS)
+
+def _read_cache_file(path: Path) -> pd.DataFrame:
     frame = pd.read_parquet(path)
     if "confidence" not in frame.columns:
         frame["confidence"] = np.round((1 + frame["score"].abs()) / 2, 6)
     return frame[CACHE_COLUMNS]
+
+
+def load_cache(path: Path) -> pd.DataFrame:
+    """Previously scored articles (empty frame on the first run).
+
+    Rows from an interrupted run's checkpoint are added on top, so a restart
+    resumes instead of starting over. Day 4 caches have no ``confidence``
+    column; they were all written by the two-label DistilBERT, for which
+    confidence = (1 + |score|) / 2 exactly.
+    """
+    parts = [_read_cache_file(p) for p in (path, checkpoint_path(path)) if p.exists()]
+    if not parts:
+        return pd.DataFrame(columns=CACHE_COLUMNS)
+    if len(parts) == 1:
+        return parts[0]
+    keys = ["ticker", "news_id", "text_sha1", "model_version"]
+    return pd.concat(parts, ignore_index=True).drop_duplicates(keys, keep="last")
+
+
+def write_parquet_atomic(frame: pd.DataFrame, path: Path) -> None:
+    """Write via a temporary file, so a crash never leaves half a file behind."""
+    tmp = path.with_name(path.name + ".tmp")
+    frame.to_parquet(tmp, index=False, compression="snappy")
+    tmp.replace(path)
+
+
+class ProgressLogger:
+    """Logs scoring progress; time left is estimated from characters, not rows.
+
+    Texts are scored shortest-first, so a rate in articles per second would
+    promise far too early a finish. Characters remaining / characters per
+    second is a much better estimate.
+    """
+
+    def __init__(
+        self,
+        total: int,
+        total_chars: int,
+        clock: Callable[[], float] = time.perf_counter,
+        started: float | None = None,
+    ) -> None:
+        """Track ``total`` articles of ``total_chars`` characters from ``started``."""
+        self.total, self.total_chars, self.clock = total, max(total_chars, 1), clock
+        self.started = clock() if started is None else started
+
+    def __call__(self, done: int, done_chars: int) -> dict[str, Any]:
+        """Log one progress line and return its fields."""
+        elapsed = max(self.clock() - self.started, 1e-9)
+        chars_per_s = done_chars / elapsed
+        left = (self.total_chars - done_chars) / chars_per_s if chars_per_s else None
+        fields = {
+            "done": done,
+            "total": self.total,
+            "percent": round(100 * done / self.total, 1) if self.total else 100.0,
+            "articles_per_s": round(done / elapsed, 1),
+            "elapsed_s": round(elapsed),
+            "eta_s": round(left) if left is not None else None,
+        }
+        eta = f"~{left / 60:.0f} min left" if left is not None else "time left unknown"
+        log.info(
+            f"scored {done}/{self.total} ({fields['percent']}%), "
+            f"{fields['articles_per_s']} articles/s, {eta}",
+            extra=fields,
+        )
+        return fields
 
 
 def _split(result: Any, n: int) -> tuple[np.ndarray, np.ndarray]:
@@ -107,13 +179,38 @@ def _split(result: Any, n: int) -> tuple[np.ndarray, np.ndarray]:
     return scores, confidence
 
 
+ChunkFn = Callable[[pd.DataFrame, "ChunkProgress"], None]
+
+
+class ChunkProgress(NamedTuple):
+    """How far a scoring run has got (passed to ``on_chunk``)."""
+
+    done: int
+    total: int
+    done_chars: int
+    total_chars: int
+
+
 def score_incremental(
     news: pd.DataFrame,
     cache: pd.DataFrame,
     version: str,
     score_fn: ScoreFn,
+    chunk_size: int | None = None,
+    on_chunk: ChunkFn | None = None,
 ) -> tuple[pd.DataFrame, dict[str, int]]:
     """Reuse cached scores where valid; score the rest with ``score_fn``.
+
+    Args:
+        news: Articles from :func:`load_news`.
+        cache: Earlier scores from :func:`load_cache`.
+        version: Fingerprint of the production model; other versions are re-scored.
+        score_fn: Texts -> scores, or ``(scores, confidences)``.
+        chunk_size: Score at most this many texts per ``score_fn`` call
+            (``None``: all at once). Texts go shortest-first, as in the scorer.
+        on_chunk: Called after each chunk with ``(scored_so_far, progress)``;
+            ``scored_so_far`` holds every row scored in this run so far (cache
+            columns), which is what the checkpoint saves.
 
     Returns:
         ``(news_with_score, counts)`` -- counts of ``reused`` and ``scored`` rows.
@@ -123,10 +220,28 @@ def score_incremental(
     merged = news.merge(valid, on=["ticker", "news_id", "text_sha1"], how="left")
     todo = merged["score"].isna().to_numpy()
     if todo.any():
-        texts = merged.loc[todo, "text"].tolist()
-        scores, confidence = _split(score_fn(texts), len(texts))
-        merged.loc[todo, "score"] = scores
-        merged.loc[todo, "confidence"] = confidence
+        lengths = merged.loc[todo, "text"].str.len()
+        order = lengths.sort_values(kind="mergesort").index.to_numpy()
+        step = chunk_size or len(order)
+        total_chars = int(lengths.sum())
+        done = done_chars = 0
+        for start in range(0, len(order), step):
+            idx = order[start : start + step]
+            texts = merged.loc[idx, "text"].tolist()
+            scores, confidence = _split(score_fn(texts), len(texts))
+            merged.loc[idx, "score"] = scores
+            merged.loc[idx, "confidence"] = confidence
+            done += len(idx)
+            done_chars += int(lengths.loc[idx].sum())
+            if on_chunk is not None:
+                so_far = merged.loc[order[:done], ["ticker", "news_id", "text_sha1"]].copy()
+                so_far["model_version"] = version
+                so_far["score"] = merged.loc[order[:done], "score"].astype("float64")
+                so_far["confidence"] = merged.loc[order[:done], "confidence"].astype("float64")
+                on_chunk(
+                    so_far[CACHE_COLUMNS],
+                    ChunkProgress(done, len(order), done_chars, total_chars),
+                )
     merged["score"] = merged["score"].astype("float64")
     merged["confidence"] = merged["confidence"].astype("float64")
     merged["model_version"] = version
@@ -293,16 +408,39 @@ def run_scoring(
 
     news = load_news(news_path)
     cache_path = root / params["scores_path"]
+    partial = checkpoint_path(cache_path)
+    cache = load_cache(cache_path)
+    if partial.exists():
+        log.info("resuming from checkpoint", extra={"checkpoint": str(partial)})
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+
+    progress: ProgressLogger | None = None
+
+    def on_chunk(so_far: pd.DataFrame, state: ChunkProgress) -> None:
+        nonlocal progress
+        if progress is None:
+            progress = ProgressLogger(state.total, state.total_chars, started=started)
+        rows = pd.concat([cache, so_far], ignore_index=True) if len(cache) else so_far
+        write_parquet_atomic(rows, partial)
+        progress(state.done, state.done_chars)
+
     started = time.perf_counter()
-    merged, counts = score_incremental(news, load_cache(cache_path), version, score_fn)
+    merged, counts = score_incremental(
+        news,
+        cache,
+        version,
+        score_fn,
+        chunk_size=int(params.get("checkpoint_every") or 0) or None,
+        on_chunk=on_chunk,
+    )
     seconds = time.perf_counter() - started
     scored = finalise(merged, band)
     weekly = weekly_aggregate(scored, int(params["top_headlines"]))
 
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
-    scored.to_parquet(cache_path, index=False, compression="snappy")
+    write_parquet_atomic(scored, cache_path)
     weekly_path = root / params["weekly_path"]
     weekly.to_parquet(weekly_path, index=False, compression="snappy")
+    partial.unlink(missing_ok=True)  # everything is in the cache now
 
     shares = scored["label"].value_counts(normalize=True)
     report = {

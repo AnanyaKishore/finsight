@@ -796,6 +796,47 @@
         "title": "SentimentWeek",
         "type": "object"
       },
+      "StockInfo": {
+        "description": "One stock of the universe (home-page list).",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sector": {
+            "title": "Sector",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "name",
+          "sector"
+        ],
+        "title": "StockInfo",
+        "type": "object"
+      },
+      "StockListResponse": {
+        "description": "``GET /api/stocks``: the whole universe, in configuration order.",
+        "properties": {
+          "stocks": {
+            "items": {
+              "$ref": "#/components/schemas/StockInfo"
+            },
+            "title": "Stocks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "stocks"
+        ],
+        "title": "StockListResponse",
+        "type": "object"
+      },
       "StockResponse": {
         "description": "``GET /api/stock/{ticker}``.",
         "properties": {
@@ -1369,6 +1410,58 @@
           }
         },
         "summary": "Stock",
+        "tags": [
+          "stocks"
+        ]
+      }
+    },
+    "/api/stocks": {
+      "get": {
+        "description": "Every stock FinSight analyses, in configuration order.",
+        "operationId": "stocks_api_stocks_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Stocks",
         "tags": [
           "stocks"
         ]

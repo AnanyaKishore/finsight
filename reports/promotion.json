@@ -3,18 +3,18 @@
     "decision": {
       "challenger_accepted": true,
       "challenger_metric": 2.9521,
-      "challenger_version": "1",
-      "champion_metric": null,
+      "challenger_version": "2",
+      "champion_metric": 2.952122,
       "champion_version": "1",
       "metric": "test_mape",
-      "promote": false,
-      "reason": "challenger is already production"
+      "promote": true,
+      "reason": "challenger better by 0.000022 test_mape"
     },
     "production": {
-      "model_uri": "models:/finsight-lstm/1",
+      "model_uri": "models:/finsight-lstm/2",
       "registered_name": "finsight-lstm",
-      "run_id": "c8bdaa9d16334182951520600e7359a0",
-      "version": "1"
+      "run_id": "684c739e6c75459c8519ceed4301fd18",
+      "version": "2"
     }
   },
   "sentiment": {
@@ -23,25 +23,25 @@
         "accepted": true,
         "metric": 0.4605,
         "rolled_back": false,
-        "version": "1"
+        "version": "3"
       },
       "finbert": {
         "accepted": true,
         "metric": 0.6575,
         "rolled_back": false,
-        "version": "2"
+        "version": "4"
       }
     },
     "decision": {
       "best_candidate": "finbert",
       "challenger_accepted": true,
       "challenger_metric": 0.6575,
-      "challenger_version": "2",
+      "challenger_version": "4",
       "champion_metric": 0.6575,
       "champion_version": "2",
       "metric": "gate_macro_f1",
       "promote": false,
-      "reason": "challenger is already production"
+      "reason": "challenger not better (gain 0.000000 <= 0.0)"
     },
     "production": {
       "candidate": "finbert",
