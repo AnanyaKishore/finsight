@@ -1,6 +1,6 @@
 #!/bin/sh
-# Fail fast on a malformed BACKEND_URL / MLFLOW_UI_URL, before nginx starts.
-# Both values are written into config.js and the Content-Security-Policy, so
+# Fail fast on a malformed BACKEND_URL / MLFLOW_UI_URL / PROMETHEUS_UI_URL /
+# GRAFANA_UI_URL, before nginx starts. The values are written into config.js and the Content-Security-Policy, so
 # anything other than a plain http(s) URL (quotes, spaces, semicolons) is refused.
 set -eu
 
@@ -15,4 +15,6 @@ check_url() {
 
 check_url BACKEND_URL "${BACKEND_URL:-}"
 check_url MLFLOW_UI_URL "${MLFLOW_UI_URL:-}"
+check_url PROMETHEUS_UI_URL "${PROMETHEUS_UI_URL:-}"
+check_url GRAFANA_UI_URL "${GRAFANA_UI_URL:-}"
 echo "finsight: portal will call the API at $BACKEND_URL"

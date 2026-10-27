@@ -3,6 +3,7 @@
 // Routes (hash-based, so nginx serves one static page):
 //   #/              overview: stock list, optimised portfolio, live sentiment demo
 //   #/stock/AAPL    one stock: overview, price history, forecast, news sentiment
+//   #/pipeline      Pipeline Console: DAG, run history, charts, run/retrain (Day 7)
 //
 // Every card loads on its own and shows its own loading, empty and error
 // state, so one failing dependency (say, the forecasting model) never blanks
@@ -23,6 +24,7 @@ import {
   safeUrl,
   signed,
 } from "./format.js";
+import { renderPipeline } from "./pipeline.js";
 import { initSearch } from "./search.js";
 
 const PERIODS = ["1W", "1M", "3M", "6M", "1Y"];
@@ -554,11 +556,15 @@ document.addEventListener("click", (e) => {
 });
 
 // --------------------------------------------------------------- router
+// Helpers the Pipeline Console shares with the other pages.
+const pipelineUi = { skeleton, showError, showEmpty, dataTable, isAbort, setActiveNav, wireSegmented };
+
 function route() {
   controller.abort();
   controller = new AbortController();
   const match = location.hash.match(/^#\/stock\/([A-Za-z.\-]{1,10})$/);
   if (match) renderStock(decodeURIComponent(match[1]).toUpperCase());
+  else if (location.hash === "#/pipeline") renderPipeline(view, controller.signal, pipelineUi);
   else renderHome();
   window.scrollTo(0, 0);
 }

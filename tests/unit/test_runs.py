@@ -50,3 +50,25 @@ def test_stage_run_survives_unreachable_mongo(monkeypatch):
 def test_recording_disabled_flag(monkeypatch):
     monkeypatch.setenv("FINSIGHT_RUN_RECORDING", "0")
     assert runs.recording_enabled() is False
+
+
+def test_stage_run_carries_the_scheduler_run_id(monkeypatch):
+    client = mongomock.MongoClient(tz_aware=True)
+    monkeypatch.setenv("FINSIGHT_RUN_RECORDING", "1")
+    import finsight.common.mongo as mongo_module
+
+    monkeypatch.setattr(mongo_module, "get_client", lambda settings, timeout_ms=0: client)
+
+    class _S:
+        mongo_db = "finsight"
+
+    # The scheduler sets this variable for every command, including this test suite.
+    monkeypatch.delenv("FINSIGHT_PIPELINE_RUN_ID", raising=False)
+    with runs.stage_run("validate", _S()):
+        pass
+    monkeypatch.setenv("FINSIGHT_PIPELINE_RUN_ID", "abc123")
+    with runs.stage_run("process", _S()):
+        pass
+    docs = {d["stage"]: d for d in client.finsight.pipeline_runs.find()}
+    assert docs["validate"]["pipeline_run_id"] is None  # run by hand
+    assert docs["process"]["pipeline_run_id"] == "abc123"  # run by the scheduler

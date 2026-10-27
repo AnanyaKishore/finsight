@@ -19,6 +19,7 @@ Design notes (also summarised in docs/DESIGN_DECISIONS.md):
 from __future__ import annotations
 
 import json
+import os
 import time
 import uuid
 from collections.abc import Callable, Sequence
@@ -209,6 +210,8 @@ class IngestionService:
                     "mode": mode,
                     "started_at": report.started_at,
                     "planned_calls": len(tasks),
+                    # Day 7: links this record to the scheduler run that started it.
+                    "pipeline_run_id": os.getenv("FINSIGHT_PIPELINE_RUN_ID") or None,
                 }
             )
             log.info("ingestion started", extra={"mode": mode, "planned_calls": len(tasks)})

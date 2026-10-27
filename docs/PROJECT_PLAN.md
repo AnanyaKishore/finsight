@@ -132,7 +132,7 @@ metrics, stored forecasts, graceful degradation), `docs/LLD.md` + `docs/api/open
 - Type-ahead search, overview card (price, change, green/red), price chart with 1W/1M/3M/6M/1Y, portfolio pie + Sharpe/return/volatility, weekly sentiment bars + article counts, prediction chart (history + dashed 14-day forecast), model "as of" timestamps.
 - Foolproof: loading skeletons, empty/error states, disabled invalid actions, keyboard navigation, mobile layout, disclaimer banner, Help → user manual.
 
-### Day 7 — Tue 27 Oct · Scheduler + Pipeline Console
+### Day 7 — Tue 27 Oct · Scheduler + Pipeline Console ✅
 **Role:** automation and the pipeline-visualisation rubric item.
 - Scheduler service: weekday job (ingest → `dvc repro` daily targets → score news → refresh forecasts → portfolio), `/retrain` webhook, per-stage run records, auto-commit of `dvc.lock` + `dvc push`.
 - Pipeline Console page: DVC DAG diagram, run history (success/failed/partial), error drill-down by `run_id`, throughput and duration charts, deep links to MLflow, Grafana, Prometheus.

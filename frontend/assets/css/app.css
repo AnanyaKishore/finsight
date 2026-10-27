@@ -149,7 +149,8 @@ button, input, textarea { font: inherit; color: inherit; }
   padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border);
   background: var(--surface); cursor: pointer; font-size: 13px; white-space: nowrap;
 }
-.status-pill .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--axis); }
+.status-pill .label { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.status-pill .dot { flex: none;  width: 9px; height: 9px; border-radius: 50%; background: var(--axis); }
 .status-pill[data-state="ok"] .dot { background: var(--ok); }
 .status-pill[data-state="degraded"] .dot { background: var(--warning); }
 .status-pill[data-state="down"] .dot { background: var(--critical); }
@@ -317,13 +318,94 @@ th { color: var(--ink-2); font-weight: 600; position: sticky; top: 0; background
 .notice .btn { margin-top: 8px; }
 .notice code { font-size: 12px; }
 
+/* ------------------------------------------------- pipeline console (Day 7) */
+.small { font-size: 12px; }
+.h3 { font-size: 14px; margin: 14px 0 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.linklike { border: 0; background: none; padding: 0; color: var(--accent-ink); text-decoration: underline; cursor: pointer; font-family: ui-monospace, monospace; }
+.run-state { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; }
+.ops-links { border-top: 1px solid var(--grid); padding-top: 10px; }
+.notice.confirm { background: var(--surface-2); color: var(--ink); margin-bottom: 12px; }
+.notice.confirm p { margin: 0 0 8px; }
+.notice.confirm .row { display: flex; gap: 8px; }
+.stats.six { grid-template-columns: repeat(6, 1fr); }
+@media (max-width: 900px) { .stats.six { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 480px) { .stats.six { grid-template-columns: repeat(2, 1fr); } }
+
+/* Status colours: never colour alone; every status also has a word. */
+.chip.st-success { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--up); }
+.chip.st-partial { background: var(--warn-bg); color: var(--warn-ink); }
+.chip.st-failed, .chip.st-interrupted { background: var(--error-bg); color: var(--error-ink); }
+.chip.st-running { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-ink); }
+.chip.st-pending, .chip.st-skipped, .chip.st-never { background: var(--surface-2); color: var(--muted); }
+.swatch.st-success { background: var(--ok); }
+.swatch.st-partial { background: var(--warning); }
+.swatch.st-failed { background: var(--critical); }
+.swatch.st-running { background: var(--accent); }
+.swatch.st-never { background: var(--axis); }
+.stale-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--warning); margin-right: 6px; vertical-align: -1px; }
+
+.dag-wrap { overflow-x: auto; }
+svg.dag { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+/* On narrow screens keep the labels readable and let the diagram scroll sideways. */
+@media (max-width: 720px) { svg.dag { max-width: none; width: 760px; } }
+.dag-edge { fill: none; stroke: var(--axis); stroke-width: 1.5; }
+.dag-arrow { fill: var(--axis); }
+.dag-node { cursor: pointer; outline: none; }
+.dag-node rect { fill: var(--surface-2); stroke: var(--border); stroke-width: 1; }
+.dag-node text { fill: var(--ink); font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.dag-node .bar { stroke: none; }
+.dag-node.st-success .bar { fill: var(--ok); }
+.dag-node.st-failed .bar { fill: var(--critical); }
+.dag-node.st-failed rect:first-of-type { fill: var(--error-bg); }
+.dag-node.st-running .bar { fill: var(--accent); }
+.dag-node.st-running rect:first-of-type { stroke: var(--accent); stroke-width: 2; }
+.dag-node.st-never .bar { fill: var(--axis); }
+.dag-node.st-never rect:first-of-type { stroke-dasharray: 4 3; }
+.dag-node .stale { fill: var(--warning); }
+.dag-node:hover rect:first-of-type, .dag-node.selected rect:first-of-type { stroke: var(--accent); stroke-width: 2; }
+.dag-node:focus-visible rect:first-of-type { stroke: var(--accent); stroke-width: 3; }
+.stage-detail { margin-top: 10px; border-top: 1px solid var(--grid); padding-top: 4px; }
+
+.table-wrap.runs { max-height: 460px; }
+.run-table td { vertical-align: top; text-align: left; }
+.run-table th { text-align: left; }
+.run-table tr[data-run] { cursor: pointer; }
+.run-table tr[data-run]:hover td { background: var(--surface-2); }
+.run-table tr[aria-selected="true"] td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.run-table td.problem { color: var(--down); white-space: normal; max-width: 180px; }
+
+.run-head { margin: 0 0 8px; display: flex; gap: 6px; flex-wrap: wrap; align-items: baseline; }
+ol.steps { list-style: none; margin: 8px 0 0; padding: 0; }
+.step { padding: 8px 0 8px 18px; border-left: 2px solid var(--grid); margin-left: 5px; position: relative; font-size: 14px; }
+.step-dot { position: absolute; left: -7px; top: 13px; width: 12px; height: 12px; border-radius: 50%; background: var(--axis); border: 2px solid var(--surface); }
+.step.st-success .step-dot { background: var(--ok); }
+.step.st-partial .step-dot { background: var(--warning); }
+.step.st-failed .step-dot { background: var(--critical); }
+.step.st-running .step-dot { background: var(--accent); }
+.step-head { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.step-meta { margin-left: auto; display: inline-flex; gap: 8px; align-items: center; font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 13px; }
+.step-error { margin-top: 4px; font-size: 13px; color: var(--error-ink); background: var(--error-bg); border-radius: 8px; padding: 6px 8px; overflow-wrap: anywhere; }
+details.log { margin-top: 6px; font-size: 13px; }
+details.log summary { cursor: pointer; color: var(--ink-2); }
+details.log pre {
+  margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); color: var(--ink);
+  font-size: 12px; line-height: 1.45; max-height: 260px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+ul.kv { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+ul.kv li { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; border-bottom: 1px solid var(--grid); }
+@media (prefers-reduced-motion: no-preference) {
+  .dag-node.st-running rect:first-of-type { animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { stroke-opacity: 0.35; } }
+}
+
 .footer { max-width: 1180px; margin: 0 auto; padding: 0 16px 32px; font-size: 13px; color: var(--ink-2); }
 .footer p { margin: 4px 0; }
 
 @media (max-width: 720px) {
   .topbar-inner { flex-wrap: wrap; gap: 10px; }
   .search { order: 3; flex-basis: 100%; max-width: none; }
-  .topnav { gap: 10px; }
+  .topnav { gap: 10px; min-width: 0; }
+  .status-pill { max-width: 44vw; } /* a long "Degraded: ..." label is cut with an ellipsis */
   .price { font-size: 28px; }
   h1 { font-size: 22px; }
   .card { padding: 14px; }

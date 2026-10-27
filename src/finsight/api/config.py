@@ -9,6 +9,8 @@ variable                       default                     meaning
 ``MODEL_TIMEOUT_S``            ``10``                      per model call
 ``MODEL_RETRIES``              ``2``                       retries after the first attempt
 ``REGISTRY_CACHE_S``           ``60``                      cache for ``/api/model-info``
+``SCHEDULER_URL``              ``http://localhost:8001``   scheduler service (Day 7)
+``SCHEDULER_TOKEN``            (unset)                     shared token; unset = no console triggers
 =============================  ==========================  =====================================
 
 MongoDB and MLflow settings come from the shared ``finsight.common.config``.
@@ -18,6 +20,8 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+
+from finsight.common.config import usable_secret
 
 # The portal (Day 6) at http://localhost:8080; browsers treat 127.0.0.1 as a
 # different origin, so both spellings are allowed by default.
@@ -38,6 +42,8 @@ class ApiConfig:
     model_timeout_s: float = 10.0
     model_retries: int = 2
     registry_cache_s: float = 60.0
+    scheduler_url: str = "http://localhost:8001"
+    scheduler_token: str | None = field(default=None, repr=False)
     lstm_name: str = "finsight-lstm"
     sentiment_name: str = "finsight-sentiment"
     history_days_in_forecast: int = 60
@@ -55,4 +61,6 @@ class ApiConfig:
             model_timeout_s=float(env.get("MODEL_TIMEOUT_S", cls.model_timeout_s)),
             model_retries=int(env.get("MODEL_RETRIES", cls.model_retries)),
             registry_cache_s=float(env.get("REGISTRY_CACHE_S", cls.registry_cache_s)),
+            scheduler_url=env.get("SCHEDULER_URL", cls.scheduler_url).rstrip("/"),
+            scheduler_token=usable_secret(env.get("SCHEDULER_TOKEN")),
         )

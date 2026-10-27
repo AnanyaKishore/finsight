@@ -7,6 +7,10 @@
 # so promoting or rolling back a model needs a restart, never a rebuild.
 # Models are downloaded from the MLflow server (--serve-artifacts) at start-up
 # and carry their own code (code_paths), so the finsight package is not installed.
+#
+# Day 7: serve_watch.py wraps `mlflow models serve`. It serves the exact version
+# behind the alias and exits when the alias moves (promotion or rollback);
+# compose's restart policy then reloads the container with the new model.
 # --------------------------------------------------------------------------- #
 
 # ---------- Stage 1: builder ----------
@@ -30,8 +34,9 @@ ENV PATH="/opt/venv/bin:$PATH" \
     TRANSFORMERS_OFFLINE=1
 COPY --from=builder /opt/venv /opt/venv
 RUN useradd --create-home --uid 1000 finsight
+COPY docker/serve_watch.py /opt/serve_watch.py
 USER finsight
 WORKDIR /home/finsight
 # MODEL_URI and PORT come from compose; --env-manager local = use this image's
 # libraries (pinned to the training versions in requirements/serve.txt).
-CMD ["sh", "-c", "exec mlflow models serve -m \"$MODEL_URI\" --env-manager local -h 0.0.0.0 -p \"$PORT\" --workers 1"]
+CMD ["python", "/opt/serve_watch.py"]

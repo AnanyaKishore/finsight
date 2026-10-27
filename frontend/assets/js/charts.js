@@ -4,7 +4,7 @@
 // grids, a tooltip on hover for every chart, and colours read from the same
 // CSS tokens as the page so light and dark mode always match.
 
-import { fmtDay, fmtShortDay, money, pct, signed } from "./format.js";
+import { fmtDay, fmtShortDay, fmtStamp, money, pct, signed } from "./format.js";
 
 const Chart = window.Chart;
 
@@ -24,6 +24,9 @@ export function theme() {
     other: token("--series-other"),
     upFill: token("--up-fill"),
     downFill: token("--down-fill"),
+    ok: token("--ok"),
+    warning: token("--warning"),
+    critical: token("--critical"),
   };
 }
 
@@ -282,4 +285,74 @@ export function toSlices(weights, max = 7) {
   const rest = sorted.slice(max - 1);
   head.push({ label: `Other (${rest.map(([s]) => s).join(", ")})`, weight: rest.reduce((a, [, w]) => a + w, 0), other: true });
   return head;
+}
+
+/** Duration of each finished run in minutes, one bar per run coloured by status. */
+export function durationChart(canvas, runs, statusWords) {
+  const t = theme();
+  const colour = (status) => (status === "success" ? t.ok : status === "partial" ? t.warning : t.critical);
+  const options = baseOptions(t);
+  options.interaction = { mode: "nearest", axis: "x", intersect: false };
+  options.scales.x.ticks.callback = function (value) {
+    return fmtStamp(this.getLabelForValue(value));
+  };
+  options.scales.y.beginAtZero = true;
+  options.scales.y.ticks.callback = (v) => `${v} min`;
+  options.plugins.tooltip.callbacks = {
+    title: (items) => fmtStamp(runs[items[0].dataIndex].started_at),
+    label: (item) => {
+      const r = runs[item.dataIndex];
+      return [` ${item.parsed.y.toFixed(1)} min`, ` ${statusWords[r.status] || r.status}`];
+    },
+  };
+  return mount(canvas, {
+    type: "bar",
+    data: {
+      labels: runs.map((r) => r.started_at),
+      datasets: [
+        {
+          label: "Duration",
+          data: runs.map((r) => r.duration_s / 60),
+          backgroundColor: runs.map((r) => colour(r.status)),
+          borderRadius: { topLeft: 4, topRight: 4 },
+          borderSkipped: "bottom",
+          maxBarThickness: 28,
+        },
+      ],
+    },
+    options,
+  });
+}
+
+/** One throughput measure per run (one unit per chart: no dual axes). */
+export function throughputChart(canvas, runs, key, unit, seriesIndex = 0) {
+  const t = theme();
+  const options = baseOptions(t);
+  options.scales.x.ticks.callback = function (value) {
+    return fmtStamp(this.getLabelForValue(value));
+  };
+  options.scales.y.beginAtZero = true;
+  options.scales.y.ticks.maxTicksLimit = 4;
+  options.plugins.tooltip.callbacks = {
+    title: (items) => fmtStamp(runs[items[0].dataIndex].started_at),
+    label: (item) => ` ${item.parsed.y.toLocaleString("en-US", { maximumFractionDigits: 1 })} ${unit}`,
+  };
+  return mount(canvas, {
+    type: "line",
+    data: {
+      labels: runs.map((r) => r.started_at),
+      datasets: [
+        {
+          label: unit,
+          data: runs.map((r) => r.summary[key]),
+          borderColor: t.series[seriesIndex],
+          backgroundColor: t.series[seriesIndex],
+          borderWidth: 2,
+          pointRadius: runs.length > 20 ? 0 : 3,
+          pointHoverRadius: 5,
+        },
+      ],
+    },
+    options,
+  });
 }

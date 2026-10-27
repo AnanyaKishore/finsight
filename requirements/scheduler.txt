@@ -1,0 +1,12 @@
+# Day 7: the scheduler runs in the pipeline image. On top of the pipeline
+# libraries it needs DVC (it runs `dvc repro` / `dvc push`), its own small HTTP
+# API (FastAPI, uvicorn, prometheus-client from api.txt), and the test tools,
+# because the first DVC stage (unit_tests) runs the unit-test suite.
+-r pipeline.txt
+-r api.txt
+dvc==3.67.1
+pytest==9.1.1
+pytest-cov==7.1.0
+mongomock==4.3.0
+responses==0.26.3
+httpx==0.28.1

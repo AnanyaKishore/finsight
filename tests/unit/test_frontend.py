@@ -74,7 +74,13 @@ def test_nginx_template_generates_config_and_restricts_connections():
 )
 def test_backend_url_is_validated_before_nginx_starts(url, ok):
     script = WEB / "nginx/15-finsight-check-env.sh"
-    env = {"BACKEND_URL": url, "MLFLOW_UI_URL": "http://localhost:5000", "PATH": "/usr/bin:/bin"}
+    env = {
+        "BACKEND_URL": url,
+        "MLFLOW_UI_URL": "http://localhost:5000",
+        "PROMETHEUS_UI_URL": "http://localhost:9090",
+        "GRAFANA_UI_URL": "http://localhost:3000",
+        "PATH": "/usr/bin:/bin",
+    }
     result = subprocess.run(
         ["sh", str(script)], env=env, capture_output=True, text=True, check=False
     )
@@ -99,3 +105,70 @@ def test_frontend_dockerfile_copies_existing_files():
         for path in source.split():
             assert (ROOT / path).exists(), f"Dockerfile copies missing {path}"
     assert "nginx-unprivileged" in dockerfile  # never runs as root
+
+
+# ---------------------------------------------------------------- Day 7
+def test_pipeline_console_is_routed_linked_and_documented():
+    app = (WEB / "assets/js/app.js").read_text(encoding="utf-8")
+    assert '"#/pipeline"' in app and "renderPipeline(" in app
+    assert 'href="#/pipeline"' in (WEB / "index.html").read_text(encoding="utf-8")
+    assert "Pipeline page" in (WEB / "help.html").read_text(encoding="utf-8")
+    page = (WEB / "assets/js/pipeline.js").read_text(encoding="utf-8")
+    for endpoint in (
+        "pipelineStatus",
+        "pipelineRuns",
+        "pipelineRun",
+        "pipelineDag",
+        "pipelineStats",
+        "pipelineTrigger",
+    ):
+        assert f"endpoints.{endpoint}(" in page
+    api = (WEB / "assets/js/api.js").read_text(encoding="utf-8")
+    assert '"/api/pipeline/trigger", { method: "POST"' in api
+    # The browser never handles the scheduler token: it only talks to the backend.
+    assert "SCHEDULER_TOKEN" not in api and "8001" not in page + api
+
+
+def test_console_links_come_from_runtime_config():
+    conf = (WEB / "nginx/default.conf.template").read_text(encoding="utf-8")
+    assert (
+        'prometheusUrl: "${PROMETHEUS_UI_URL}"' in conf
+        and 'grafanaUrl: "${GRAFANA_UI_URL}"' in conf
+    )
+    dockerfile = (ROOT / "docker/Dockerfile.frontend").read_text(encoding="utf-8")
+    assert "PROMETHEUS_UI_URL=" in dockerfile and "GRAFANA_UI_URL=" in dockerfile
+    check = (WEB / "nginx/15-finsight-check-env.sh").read_text(encoding="utf-8")
+    assert "check_url GRAFANA_UI_URL" in check
+
+
+def test_compose_scheduler_service():
+    compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text(encoding="utf-8"))
+    services = compose["services"]
+    sched = services["scheduler"]
+    assert sched["image"] == services["ingestion"]["image"]  # one image for CI and production
+    assert sched["entrypoint"] == ["python", "-m", "finsight.scheduler"]
+    assert sched["ports"] == ["127.0.0.1:8001:8001"] and sched["mem_limit"] == "3g"
+    assert ".:/app" in sched["volumes"]
+    assert any(v.startswith("${DVC_REMOTE_DIR") for v in sched["volumes"])
+    env = sched["environment"]
+    assert env["GIT_CONFIG_VALUE_0"] == "/app" and env["HOME"] == "/tmp"  # noqa: S108
+    assert sched["user"].startswith("${FINSIGHT_UID")
+    assert "GITHUB" not in str(env).upper()  # local commits only, no push credentials
+    backend = services["backend"]["environment"]
+    assert backend["SCHEDULER_URL"] == "http://scheduler:8001" and "SCHEDULER_TOKEN" in backend
+    assert "SCHEDULER_TOKEN" not in services["frontend"]["environment"]
+
+
+def test_pipeline_image_has_what_the_scheduler_runs():
+    dockerfile = (ROOT / "docker/Dockerfile.pipeline").read_text(encoding="utf-8")
+    assert "requirements/scheduler.txt" in dockerfile and " git" in dockerfile
+    reqs = (ROOT / "requirements/scheduler.txt").read_text(encoding="utf-8")
+    for package in ("-r pipeline.txt", "-r api.txt", "dvc==", "pytest==", "mongomock==", "httpx=="):
+        assert package in reqs
+
+
+def test_serving_image_watches_the_production_alias():
+    dockerfile = (ROOT / "docker/Dockerfile.serve").read_text(encoding="utf-8")
+    assert "serve_watch.py" in dockerfile
+    watcher = (ROOT / "docker/serve_watch.py").read_text(encoding="utf-8")
+    assert "get_model_version_by_alias" in watcher and "return 0" in watcher

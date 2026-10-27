@@ -12,6 +12,8 @@ Endpoints (I/O contracts in :mod:`finsight.api.schemas`, live docs at ``/docs``)
 ``GET  /api/portfolio``             latest optimised allocation + out-of-sample check
 ``GET  /api/health``                dependency status (``ok`` / ``degraded``)
 ``GET  /api/model-info``            production versions from the MLflow registry
+``GET  /api/pipeline/...``          Pipeline Console: status, runs, run detail, DAG, stats
+``POST /api/pipeline/trigger``      start a daily run or a retrain (via the scheduler)
 ``GET  /metrics``                   Prometheus metrics
 =================================  ==============================================
 
@@ -41,6 +43,7 @@ from finsight.api import schemas as s
 from finsight.api.config import ApiConfig
 from finsight.api.metrics import ApiMetrics
 from finsight.api.model_client import ModelClient, ModelUnavailable
+from finsight.api.pipeline import SchedulerClient, build_router
 from finsight.api.repository import MarketRepository, as_date, next_trading_days
 from finsight.common.config import Settings, get_settings
 from finsight.common.logging import get_logger
@@ -106,6 +109,7 @@ def create_app(  # noqa: C901 -- one function keeps every route visible in one p
     sentiment: ModelClient | None = None,
     registry: Callable[[str], dict | None] | None = None,
     clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+    scheduler: SchedulerClient | None = None,
 ) -> FastAPI:
     """Build the app; every dependency is injectable for tests."""
     settings = settings or get_settings()
@@ -477,6 +481,9 @@ def create_app(  # noqa: C901 -- one function keeps every route visible in one p
                 )
             )
         return s.ModelInfoResponse(models=models, registry_reachable=registry_lookup.reachable)
+
+    scheduler = scheduler or SchedulerClient(config.scheduler_url, config.scheduler_token)
+    app.include_router(build_router(db, scheduler, ApiError, clock))
 
     @app.get("/metrics", include_in_schema=False)
     def prometheus() -> Response:

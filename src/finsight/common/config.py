@@ -25,6 +25,20 @@ from dotenv import load_dotenv
 
 from finsight.common.exceptions import ConfigError
 
+PLACEHOLDERS = frozenset({"", "replace-me", "changeme", "change-me"})
+
+
+def usable_secret(value: str | None, min_length: int = 16) -> str | None:
+    """A shared secret, or ``None`` if it is missing, a placeholder or too short.
+
+    Used for ``SCHEDULER_TOKEN``: the copy of ``.env.example`` says
+    ``replace-me``, and accepting that would make the trigger API guessable.
+    """
+    value = (value or "").strip()
+    if value.lower() in PLACEHOLDERS or len(value) < min_length:
+        return None
+    return value
+
 
 def find_project_root(start: Path | None = None) -> Path:
     """Locate the project root.

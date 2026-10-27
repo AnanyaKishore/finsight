@@ -12,7 +12,9 @@ LABEL org.opencontainers.image.title="finsight-frontend" \
 
 # Defaults for running the image on its own; compose overrides them.
 ENV BACKEND_URL=http://localhost:8000 \
-    MLFLOW_UI_URL=http://localhost:5000
+    MLFLOW_UI_URL=http://localhost:5000 \
+    PROMETHEUS_UI_URL=http://localhost:9090 \
+    GRAFANA_UI_URL=http://localhost:3000
 
 # Two worker processes are plenty for one user; the default ("auto") starts
 # one per CPU core (12 on the target laptop) for no benefit.

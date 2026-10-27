@@ -1,7 +1,9 @@
 # --------------------------------------------------------------------------- #
-# FinSight "pipeline" image: ingestion jobs today; Spark ETL, training and the
-# scheduler are added to this same image on later days so that the code that
-# runs in CI (dvc repro) and in production runs in ONE identical environment.
+# FinSight "pipeline" image: ingestion, Spark ETL, training and (Day 7) the
+# scheduler, so that the code that runs in CI (dvc repro) and in production
+# runs in ONE identical environment. The scheduler container mounts the
+# repository at /app and runs `dvc repro` there; the copied src/ below is only
+# used by one-shot job containers (`docker compose run --rm ingestion ...`).
 #
 # Multi-stage build (Module 3, Handout 1): wheels are built in a fat "builder"
 # stage, only the installed packages are copied into the slim runtime stage.
@@ -18,22 +20,23 @@ WORKDIR /build
 COPY requirements/ requirements/
 RUN python -m venv /opt/venv \
  && /opt/venv/bin/pip install --upgrade pip \
- && /opt/venv/bin/pip install -r requirements/pipeline.txt
+ && /opt/venv/bin/pip install -r requirements/scheduler.txt
 
 # ---------- Stage 2: runtime ----------
 # bookworm is pinned because it ships openjdk-17 (Spark 4 needs Java 17+).
 FROM python:3.11-slim-bookworm AS runtime
 LABEL org.opencontainers.image.title="finsight-pipeline" \
-      org.opencontainers.image.description="FinSight ingestion / ETL / training jobs"
+      org.opencontainers.image.description="FinSight ingestion / ETL / training jobs + scheduler"
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app/src \
     FINSIGHT_ROOT=/app
 # Java runtime for PySpark (headless JRE only); procps provides `ps`, which
-# Spark's launcher scripts call.
+# Spark's launcher scripts call; git is needed by DVC and by the scheduler's
+# local commit of dvc.lock.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends openjdk-17-jre-headless procps \
+ && apt-get install -y --no-install-recommends openjdk-17-jre-headless procps git \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /opt/venv /opt/venv
 WORKDIR /app

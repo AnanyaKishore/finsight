@@ -9,7 +9,8 @@
 #   sentiment-serve  MLflow model server: models:/finsight-sentiment@production  (Day 5)
 #   backend          FastAPI REST API + Prometheus /metrics                      (Day 5)
 #   frontend         nginx: the web portal at http://localhost:8080              (Day 6)
-# Later days add: scheduler, prometheus, alertmanager, grafana,
+#   scheduler        daily pipeline runs + retrain trigger API on :8001          (Day 7)
+# Later days add: prometheus, alertmanager, grafana,
 # node-exporter, mongodb-exporter.
 #
 # Memory budget (8 GB laptop): every service gets an explicit mem_limit so the
@@ -83,7 +84,7 @@ services:
     container_name: finsight-ingestion
     # One-shot job, not a long-running service: start it with
     #   docker compose run --rm ingestion incremental
-    # (Day 7 replaces manual runs with the scheduler service.)
+    # (Since Day 7 the scheduler runs this every weekday; this stays for manual runs.)
     profiles: ["jobs"]
     entrypoint: ["python", "-m", "finsight.ingestion.cli"]
     command: ["incremental"]
@@ -177,6 +178,10 @@ services:
       LSTM_SERVE_URL: http://lstm-serve:5001
       SENTIMENT_SERVE_URL: http://sentiment-serve:5002
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080}
+      # Day 7: the Pipeline Console's "Run now" / "Retrain now" go through the
+      # backend, which adds the shared token; the browser never sees it.
+      SCHEDULER_URL: http://scheduler:8001
+      SCHEDULER_TOKEN: ${SCHEDULER_TOKEN:-}
     ports:
       - "127.0.0.1:8000:8000"     # API + docs at http://localhost:8000/docs
     depends_on:
@@ -202,6 +207,9 @@ services:
       # Must also be allowed by the backend's FRONTEND_ORIGINS (CORS).
       BACKEND_URL: ${BACKEND_URL:-http://localhost:8000}
       MLFLOW_UI_URL: ${MLFLOW_UI_URL:-http://localhost:5000}
+      # Linked from the Pipeline Console (the services arrive on Day 8).
+      PROMETHEUS_UI_URL: ${PROMETHEUS_UI_URL:-http://localhost:9090}
+      GRAFANA_UI_URL: ${GRAFANA_UI_URL:-http://localhost:3000}
     ports:
       - "127.0.0.1:8080:8080"     # the portal: http://localhost:8080
     healthcheck:
@@ -213,6 +221,69 @@ services:
     # Deliberately no depends_on: backend. The portal loads on its own and
     # shows "API unreachable" with a retry button until the backend is up.
     mem_limit: 64m                # nginx serving static files needs ~5-10 MB
+    networks: [finsight]
+
+  # ------------------------------------------------------------- Day 7 ----
+  scheduler:
+    # Same image as the ingestion job (one environment for CI and production).
+    # The repository is mounted at /app, so `dvc repro` updates YOUR working
+    # copy: data/, models/, reports/ and dvc.lock, exactly as if you ran it.
+    image: finsight/pipeline:${FINSIGHT_VERSION:-dev}
+    pull_policy: never            # built by the ingestion service's build: section
+    container_name: finsight-scheduler
+    restart: unless-stopped
+    entrypoint: ["python", "-m", "finsight.scheduler"]
+    command: []
+    # Run as your own user so files written into the repository stay yours.
+    # Set FINSIGHT_UID / FINSIGHT_GID in .env if `id -u` / `id -g` are not 1000.
+    user: "${FINSIGHT_UID:-1000}:${FINSIGHT_GID:-1000}"
+    environment:
+      <<: *common-env
+      HOME: /tmp                  # caches (DVC site cache, matplotlib) go here
+      # A user name for tools that look one up (MLflow's run "user" tag, Spark's
+      # Hadoop login), which fails when FINSIGHT_UID has no entry in the image.
+      USER: finsight
+      LOGNAME: finsight
+      HADOOP_USER_NAME: finsight
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+      BACKEND_INTERNAL_URL: http://backend:8000
+      LSTM_SERVE_URL: http://lstm-serve:5001
+      MARKETSTACK_API_KEY: ${MARKETSTACK_API_KEY}
+      MARKETSTACK_BASE_URL: ${MARKETSTACK_BASE_URL:-https://api.marketstack.com/v2}
+      FINNHUB_API_KEY: ${FINNHUB_API_KEY}
+      FINNHUB_BASE_URL: ${FINNHUB_BASE_URL:-https://finnhub.io/api/v1}
+      SCHEDULER_TOKEN: ${SCHEDULER_TOKEN:-}
+      # The repository belongs to your host user: tell git it is safe, and sign
+      # the scheduler's local commits so they are easy to recognise.
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: /app
+      GIT_AUTHOR_NAME: FinSight scheduler
+      GIT_AUTHOR_EMAIL: scheduler@finsight.local
+      GIT_COMMITTER_NAME: FinSight scheduler
+      GIT_COMMITTER_EMAIL: scheduler@finsight.local
+    volumes:
+      - .:/app
+      # The DVC remote, mounted at the SAME absolute path as on the host so the
+      # url in .dvc/config works unchanged. Set DVC_REMOTE_DIR in .env.
+      - ${DVC_REMOTE_DIR:?set DVC_REMOTE_DIR in .env (see README, Day 7)}:${DVC_REMOTE_DIR}
+    ports:
+      - "127.0.0.1:8001:8001"     # trigger API + /metrics (localhost only)
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      mongo:
+        condition: service_healthy
+      mlflow:
+        condition: service_healthy
+    # Peak is a full retrain (LSTM training ~1.5 GB) or Spark (1 GB driver +
+    # JVM overhead). Steps run one at a time, so 3 GB covers the worst step.
+    mem_limit: 3g
     networks: [finsight]
 
 volumes:

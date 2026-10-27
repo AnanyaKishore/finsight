@@ -190,3 +190,24 @@ registry:
   lstm_min_improvement: 0.0          # MAPE points
   sentiment_min_improvement: 0.0     # macro-F1
   report: reports/promotion.json
+
+# --------------------------------------------------------------------------- #
+# Scheduler service (Day 7). Operational settings, not DVC params: changing
+# them never invalidates a pipeline stage.
+# --------------------------------------------------------------------------- #
+scheduler:
+  timezone: Asia/Kolkata
+  daily_time: "06:30"          # US close (01:30 IST) + ~2 h until EOD prices are published
+  run_days: [tue, wed, thu, fri, sat]   # the mornings after US trading days
+  check_interval_s: 60         # how often the loop checks whether a run is due
+  log_tail_lines: 40           # lines of output kept for a failed step
+  git_commit: true             # commit dvc.lock + reports locally after a run (never pushes)
+  dvc_push: true               # push new DVC outputs to the local DVC remote
+  timeouts_s:                  # per step; a step over its limit is stopped and fails
+    ingest: 1800
+    data: 2700
+    score_sentiment: 5400
+    optimize_portfolio: 900
+    retrain: 7200
+    forecasts: 900
+    version: 900

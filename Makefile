@@ -3,7 +3,7 @@
 # Load .env (if present) so targets can use the same variables as compose.
 -include .env
 export
-.PHONY: help install lint format test test-int up down mongo-shell ingest-plan backfill incremental status build repro dag eda benchmark train plots sentiment portfolio feature-experiment mlflow-ui register serve api-dev rollback-lstm frontend web-dev
+.PHONY: help install lint format test test-int up down mongo-shell ingest-plan backfill incremental status build repro dag eda benchmark train plots sentiment portfolio feature-experiment mlflow-ui register serve api-dev rollback-lstm frontend web-dev scheduler run-now retrain-now
 
 help:            ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*## "}{printf "  %-20s %s\n",$$1,$$2}'
@@ -94,3 +94,12 @@ api-dev:         ## run the backend locally with auto-reload-free uvicorn (needs
 
 rollback-lstm:   ## roll the LSTM back to the previous production version (REASON="...")
 	python -m finsight.registry.rollback --model lstm --reason "$(REASON)"
+
+scheduler:       ## start the scheduler (daily runs at 06:30 IST + console triggers) (Day 7)
+	docker compose up -d scheduler
+
+run-now:         ## start a daily pipeline run now (same as "Run now" in the console)
+	curl -s -X POST localhost:8001/run -H "X-Finsight-Token: $$SCHEDULER_TOKEN" -H 'Content-Type: application/json' -d '{"kind":"daily","reason":"make run-now"}'; echo
+
+retrain-now:     ## start a retrain now (same as "Retrain now" in the console)
+	curl -s -X POST localhost:8001/run -H "X-Finsight-Token: $$SCHEDULER_TOKEN" -H 'Content-Type: application/json' -d '{"kind":"retrain","reason":"make retrain-now"}'; echo

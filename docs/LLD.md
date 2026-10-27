@@ -120,6 +120,41 @@ Status: `200`, `404 no_portfolio`.
 | `GET /api/model-info` | production `{name, version, run_id, tags}` per model (tags = evaluation metrics, acceptance, candidate), `registry_reachable` |
 | `GET /metrics` | Prometheus text format (§6) |
 
+### 2.8 Pipeline Console (`/api/pipeline/*`, Day 7)
+| Endpoint | Response |
+|---|---|
+| `GET /api/pipeline/status` | `{reachable, busy, running_run_id, current_step, next_daily_run, schedule: {time, days, timezone}, triggers_enabled, detail}`; when the scheduler is down, `reachable: false` and `busy` comes from Mongo |
+| `GET /api/pipeline/runs?limit=1..200&status=&kind=daily\|retrain` | `{runs: [{run_id, kind, trigger, reason, status, started_at, finished_at, duration_s, current_step, git_commit, failed_steps, summary}]}`, newest first, no logs |
+| `GET /api/pipeline/runs/{run_id}` | the summary plus `steps: [{name, label, status, critical, started_at, finished_at, duration_s, exit_code, detail, error, log_tail, metrics}]` and `stages: [{stage, status, started_at, duration_s, metrics, error, git_commit}]`; `404 unknown_run` |
+| `GET /api/pipeline/dag` | `{nodes: [{name, status: success\|failed\|running\|never, stale, last_run_at, duration_s, error, metrics}], edges: [[from, to]], generated_at}`; `404 no_dag` before the scheduler first starts |
+| `GET /api/pipeline/stats?days=1..365` | `{days, runs, by_status, success_rate, median_duration_s: {daily, retrain}, latest_throughput: {etl_rows_per_s, scoring_articles_per_s, ingest_rows_per_s}}` |
+| `POST /api/pipeline/trigger` `{kind: daily\|retrain, reason}` | `202 {run_id, kind}`; `409 pipeline_busy`; `503 scheduler_unavailable` (down, or no token) |
+
+Run status: `running`, `success`, `partial` (finished, a non-critical step failed or was partial), `failed` (a critical step failed), `interrupted` (the scheduler stopped mid-run; closed at its next start). Step status adds `pending` and `skipped`.
+
+### 2.9 Scheduler API (internal, `127.0.0.1:8001`)
+| Endpoint | Behaviour |
+|---|---|
+| `GET /health` | `{status: ok, busy}` (compose healthcheck) |
+| `GET /status` | busy, the running run document, next daily run, last finished run, schedule |
+| `POST /run` `{kind, reason, trigger: console\|api}` | token required; `202 {run_id}`, `409 busy`, `401`, `503 trigger_disabled` |
+| `POST /retrain` | Alertmanager webhook body; token as `Authorization: Bearer`; reason = alert names; `status: resolved` → `200 ignored` |
+| `GET /metrics` | `finsight_pipeline_runs_total{kind,status}`, `_last_run_status{kind}` (1 / 0.5 / 0), `_last_run_timestamp_seconds{kind}`, `_last_run_duration_seconds{kind}`, `_step_duration_seconds{step}`, `_step_failures_total{step}`, `finsight_pipeline_running`, `finsight_pipeline_throughput{measure}` |
+
+Run plans (`finsight.scheduler.plan`; critical steps stop the run):
+
+| Step | daily | retrain | Command | Critical |
+|---|---|---|---|---|
+| ingest | ✓ | ✓ | `python -m finsight.ingestion.cli incremental` (exit 3 = partial) | |
+| data | ✓ | | `dvc repro process` | ✓ |
+| score_sentiment | ✓ | | `dvc repro --single-item score_sentiment` | |
+| optimize_portfolio | ✓ | | `dvc repro --single-item optimize_portfolio` | |
+| retrain | | ✓ | `dvc repro` | ✓ |
+| forecasts | ✓ | ✓ | `GET backend /api/prediction/{t}` for the 10 tickers (waits for `lstm-serve` to reload after a promotion) | |
+| version | ✓ | ✓ | `dvc push`; `git commit -- dvc.lock reports` (local only) | |
+
+Timeouts per step: `params.yaml` → `scheduler.timeouts_s`.
+
 ## 3. Error codes
 
 | HTTP | `code` | When |
@@ -127,10 +162,14 @@ Status: `200`, `404 no_portfolio`.
 | 404 | `unknown_ticker` | symbol not in the universe |
 | 404 | `no_data` | no prices stored for the ticker |
 | 404 | `no_portfolio` | the optimisation has not run yet |
+| 404 | `unknown_run` | no pipeline run with that `run_id` |
+| 404 | `no_dag` | the scheduler has not stored the DAG yet |
+| 409 | `pipeline_busy` | a pipeline run is already in progress |
 | 422 | `invalid_request` | parameter/body validation failed (message names the field) |
 | 503 | `insufficient_history` | fewer than 100 prices for a forecast |
 | 503 | `model_unavailable` | model server down/timing out (after retries) and no fallback exists |
 | 503 | `database_unavailable` | MongoDB unreachable |
+| 503 | `scheduler_unavailable` | scheduler down, refused, or `SCHEDULER_TOKEN` not configured |
 | 500 | `internal_error` | unexpected; logged with stack trace and `request_id` |
 
 ## 4. Model-serving contracts (MLflow scoring server)
@@ -160,7 +199,9 @@ connection errors, 5xx and 429; 4xx is never retried.
 | `sentiment_weekly` | `(ticker, week_start)` | `score_sentiment` | API |
 | `portfolios` | `as_of` | `optimize_portfolio` | API |
 | `forecasts` | `(ticker, as_of, model_version)` | API | API; monitoring (Day 8: realised error) |
-| `pipeline_runs` | `run_id` | every DVC stage, ingestion, rollback | Pipeline Console (Day 7) |
+| `pipeline_runs` | `run_id` | every DVC stage, ingestion, rollback (with `pipeline_run_id` when the scheduler started it) | Pipeline Console |
+| `pipeline_executions` | `run_id` | scheduler (one document per run, steps updated live) | Pipeline Console |
+| `pipeline_dag` | `_id: "dvc"` | scheduler (after each run and at start-up) | Pipeline Console |
 | `api_usage` | `(provider, period)` | ingestion quota ledger | ingestion |
 
 `forecasts` document: `{ticker, as_of, model_name, model_version, run_id, forecast: [{date, price}] (14), last_price, generated_at}`.
@@ -223,7 +264,7 @@ Verified in the Day 5 rehearsal (lstm-serve stopped → stored forecast served, 
 | Delivery | Static files in `frontend/`, served by `nginx-unprivileged` (uid 101, port 8080). No build step. |
 | Coupling | The browser calls the backend directly at `BACKEND_URL`; nginx generates `/config.js` (`window.FINSIGHT_CONFIG`) from the environment at start-up. A malformed URL stops the container (`15-finsight-check-env.sh`). |
 | Security | CSP `default-src 'self'`, `connect-src 'self' <BACKEND_URL>`, no third-party hosts (Chart.js 4.4.7 is vendored, MIT); `X-Frame-Options: DENY`; `nosniff`; `no-referrer`. All API text is HTML-escaped; only `http(s)` headline URLs become links. |
-| Routing | Hash routes: `#/` overview, `#/stock/{SYMBOL}`; unknown symbols show a "not covered" page. |
+| Routing | Hash routes: `#/` overview, `#/stock/{SYMBOL}`, `#/pipeline` (Day 7); unknown symbols show a "not covered" page. |
 | Client resilience | 15 s timeout per call (30 s for forecasts and analysis); GETs retried twice with exponential backoff (400 ms, 800 ms + jitter) on network errors, 502 and 504; requests are cancelled on navigation and stale answers are dropped. |
 | States | Each card loads independently with a skeleton, an empty state and an error state with *Try again*; the header pill polls `/api/health` every 30 s (green / amber / red). |
 | Charts | One y-axis per chart; price (line), forecast (solid history + dashed forecast), weekly sentiment (bars, −1…+1, by sign) with article counts as a separate chart, allocation (doughnut, ≤ 7 slices). Each chart has a hover tooltip and a data-table view. |
@@ -239,6 +280,8 @@ Verified in the Day 5 rehearsal (lstm-serve stopped → stored forecast served, 
 | Portfolio card | `GET /api/portfolio` |
 | "Try the sentiment model" | `POST /api/sentiment/analyze` |
 | Status pill | `GET /api/health`, `GET /api/model-info` |
+| Pipeline Console: scheduler card, buttons | `GET /api/pipeline/status` (every 5 s while a run is in progress, else 30 s), `POST /api/pipeline/trigger` |
+| Pipeline Console: DAG, history, details, charts | `GET /api/pipeline/dag`, `/runs`, `/runs/{id}`, `/stats` |
 
 ## 9. Code structure
 
@@ -252,6 +295,8 @@ Verified in the Day 5 rehearsal (lstm-serve stopped → stored forecast served, 
 | `finsight.sentiment` | scorer, fetch, evaluate (per candidate), pyfunc, incremental scoring + publishing |
 | `finsight.portfolio` | MPT grid, SciPy check, walk-forward, stage + publishing |
 | `finsight.registry` | gate rules, registration stage, rollback CLI, production pointer |
-| `finsight.api` | FastAPI app, schemas, repository, model client, metrics, entry point |
+| `finsight.api` | FastAPI app, schemas, repository, model client, metrics, pipeline endpoints, entry point |
+| `finsight.scheduler` | `schedule` (when), `plan` (steps), `runner` (subprocess + timeout), `store` (Mongo), `dag`, `versioning` (dvc push, local commit), `service` (loop, one run at a time, metrics), `app` (HTTP API) |
+| `docker/serve_watch.py` | serving containers: serve the `@production` version, exit when the alias moves |
 | `finsight.ci` | unit-test gate stage |
-| `frontend/` | portal pages (`index.html`, `help.html`), `assets/js` (`api`, `search`, `charts`, `format`, `app`), `nginx/` template + start-up check |
+| `frontend/` | portal pages (`index.html`, `help.html`), `assets/js` (`api`, `search`, `charts`, `format`, `app`, `pipeline`), `nginx/` template + start-up check |

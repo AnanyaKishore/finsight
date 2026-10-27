@@ -86,6 +86,29 @@
       </section>
 
       <section class="card span-12">
+        <h2>The Pipeline page (for operators)</h2>
+        <p>The <strong>Pipeline</strong> link at the top opens the console that shows how FinSight keeps itself up to
+          date. Every weekday morning (Tuesday to Saturday at 06:30, India time, after the US market has closed) the
+          scheduler fetches new prices and news, runs the data pipeline and refreshes the forecasts. If the laptop was
+          asleep at that time, the run starts as soon as it wakes.</p>
+        <ul>
+          <li><strong>Scheduler:</strong> whether a run is in progress, which step it is on, and when the next run is due.
+            <strong>Run now</strong> starts the daily run straight away; <strong>Retrain now</strong> retrains the
+            forecasting model and lets the promotion gate decide whether the new model replaces the current one. Both
+            ask you to confirm first, and both are off while another run is in progress.</li>
+          <li><strong>Pipeline stages:</strong> each box is one stage of the DVC pipeline, with arrows showing which
+            stage feeds which. The coloured bar and the word in the tooltip give the result of its last run: green
+            succeeded, red failed, blue running, grey not run yet. An amber dot means its inputs changed since it last
+            ran. Select a box for details.</li>
+          <li><strong>Run history:</strong> one row per run. Filter by status, and select a row to see each step, any
+            error message, and the last lines of the log. A <em>partial</em> run finished, but at least one non-essential
+            step had a problem (for example one stock's news could not be fetched).</li>
+          <li><strong>Run duration</strong> and <strong>Throughput</strong> show whether runs are getting slower over time.
+            Every chart has a table view underneath.</li>
+        </ul>
+      </section>
+
+      <section class="card span-12">
         <h2>Important</h2>
         <p>FinSight is a course project that demonstrates how machine-learning models are built and operated. Its
           forecasts and scores are estimates that are often wrong, and markets can move for reasons no model sees.

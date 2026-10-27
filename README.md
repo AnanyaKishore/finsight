@@ -36,7 +36,8 @@ finsight/
 │   ├── sentiment/              # fetch (pinned model + PhraseBank), evaluate/calibrate/package, incremental scoring
 │   ├── portfolio/              # MPT grid search, SciPy check, walk-forward backtest, publishing
 │   ├── registry/               # promotion gate, register stage, rollback CLI, production pointer
-│   └── api/                    # FastAPI backend: routes, schemas, Mongo repository, model client, metrics
+│   ├── scheduler/              # daily/retrain runs: schedule, step plan, runner, DAG, git/DVC, HTTP API (Day 7)
+│   └── api/                    # FastAPI backend: routes, schemas, Mongo repository, model client, metrics, pipeline endpoints
 ├── frontend/                   # web portal: static HTML/CSS/JS + nginx template (Day 6)
 ├── tests/{unit,integration}/   # pytest suites
 ├── notebooks/01_eda.ipynb      # exploratory data analysis (built by scripts/build_eda_notebook.py)
@@ -331,6 +332,87 @@ frontend container at start-up with a clear message.
 
 **Developing the portal without Docker:** `make web-dev` serves `frontend/` at
 http://localhost:8080 with Python's built-in server (uses `frontend/config.js`).
+
+## Day 7 runbook — the scheduler and the Pipeline Console
+
+```
+scheduler :8001 (pipeline image, repo mounted at /app)
+   ├─ every Tue–Sat 06:30 IST (or as soon as the laptop wakes):
+   │     ingest → dvc repro process → dvc repro --single-item score_sentiment
+   │     → dvc repro --single-item optimize_portfolio → forecasts (via backend) → dvc push + local commit
+   ├─ POST /run      ← backend /api/pipeline/trigger  ← "Run now" / "Retrain now" in the console
+   └─ POST /retrain  ← Alertmanager webhook (Day 8)
+         every step → Mongo pipeline_executions; every DVC stage → pipeline_runs (same run_id)
+browser ──► #/pipeline ──► backend /api/pipeline/{status,runs,runs/{id},dag,stats,trigger}
+lstm-serve / sentiment-serve: restart themselves when @production moves (serve_watch.py)
+```
+
+The daily run never retrains: retraining (`dvc repro`, i.e. train → evaluate →
+promotion gate) only happens from **Retrain now** or the `/retrain` webhook.
+The scheduler commits `dvc.lock` and `reports/` **locally** (author "FinSight
+scheduler"); it never pushes to GitHub. You push when you want to.
+
+**1. One-time settings in `.env`** (see `.env.example`):
+```bash
+echo "SCHEDULER_TOKEN=$(python -c 'import secrets; print(secrets.token_urlsafe(32))')" >> .env
+echo "DVC_REMOTE_DIR=$(dvc remote list | awk '{print $2}')" >> .env    # must be an absolute path
+id -u; id -g     # if either is not 1000, add FINSIGHT_UID=... and FINSIGHT_GID=... to .env
+```
+
+**2. Build and start** (the pipeline image gains DVC, git and the scheduler; the
+serving image gains the alias watcher):
+```bash
+pip install -r requirements/dev.txt
+pytest tests/unit -q                                   # expect all to pass (~195)
+docker compose build ingestion lstm-serve              # pipeline + serve images (~5-10 min)
+docker compose up -d --build backend frontend   # their images contain the new code
+docker compose up -d lstm-serve sentiment-serve scheduler
+docker compose ps                                      # scheduler "healthy" after ~30 s
+docker compose logs -f scheduler                       # Ctrl+C to stop following
+```
+Today is a run day and it is past 06:30, so the scheduler starts a
+**catch-up** daily run within a minute of starting. Open
+http://localhost:8080/#/pipeline and watch it (the page refreshes every 5 s
+while a run is in progress). Expect 5–25 minutes, mostly Spark and scoring.
+
+**Do not run `dvc repro` on the host while the scheduler is running a step**:
+both would work on the same repository and DVC would refuse with a lock error.
+Use **Run now** in the console instead, or `docker compose stop scheduler` first.
+
+| What to try | Where |
+|---|---|
+| Live progress: current step, DAG boxes turning green | Scheduler card, DAG |
+| Click a DAG stage: last run, duration, metrics, upstream/downstream | DAG |
+| Run history, filter Failed/Partial/Succeeded, click a run for steps + log tail | Run history, Run details |
+| Duration (daily / retrain) and throughput (ETL rows/s, articles/s) charts | bottom |
+| **Run now** (a second daily run; the schedule still runs tomorrow) | Scheduler card |
+| **Retrain now** (20–60 min; the gate decides whether v-next is promoted) | Scheduler card |
+| Scheduler metrics for Day 8: `curl -s localhost:8001/metrics \| grep finsight_pipeline` | terminal |
+
+**Failure drill** (screenshot for the report): break a stage, run, read the error
+in the console, fix, run again.
+```bash
+docker compose exec mongo mongosh -u $MONGO_ROOT_USER -p $MONGO_ROOT_PASSWORD --authenticationDatabase admin finsight \
+  --eval 'db.prices.updateOne({ticker:"AAPL"}, {$set:{close:-1}}, {sort:{date:-1}})'
+# console → Run now → the run fails at "Tests, export, validation, Spark ETL"; the
+# log tail shows prices.positive_values failed; later steps are "Skipped".
+docker compose run --rm ingestion repair      # re-fetches the broken bar (the fix the log suggests)
+# console → Run now → succeeds
+```
+
+**Triggering without the console** (what Day 8's alerts will do):
+```bash
+curl -s -X POST localhost:8001/retrain -H "Authorization: Bearer $SCHEDULER_TOKEN" \
+  -H 'Content-Type: application/json' -d '{"status":"firing","alerts":[{"labels":{"alertname":"Manual"}}]}'
+```
+
+**Pushing the scheduler's commits:** `git log --oneline -5` shows
+`chore(pipeline): scheduler run <day> [<run_id>]` commits. Push them with your
+own work (`git push`). If the scheduler finds a merge or rebase in progress, or a
+detached HEAD, it skips the commit and says so in the run's last step.
+
+**Full logs:** `logs/scheduler/<run_id>.log` (every command's complete output);
+the console keeps the last 40 lines of a failed step.
 
 ---
 

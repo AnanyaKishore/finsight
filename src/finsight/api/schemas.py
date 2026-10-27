@@ -8,7 +8,7 @@ interactive docs at ``/docs``. Every analytical response carries a
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -248,3 +248,125 @@ class ModelInfoResponse(BaseModel):
 
     models: list[ModelInfo]
     registry_reachable: bool
+
+
+# ---------------------------------------------------------------- pipeline (Day 7)
+RunStatus = Literal["running", "success", "partial", "failed", "interrupted"]
+
+
+class PipelineStep(BaseModel):
+    """One step of a scheduler run."""
+
+    name: str
+    label: str
+    status: Literal["pending", "running", "success", "partial", "failed", "skipped"]
+    critical: bool = False
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    duration_s: float | None = None
+    exit_code: int | None = None
+    detail: str | None = None
+    error: str | None = None
+    log_tail: list[str] = Field(default_factory=list)
+    metrics: dict[str, float | int | str | None] = Field(default_factory=dict)
+
+
+class PipelineRunSummary(BaseModel):
+    """A run in the history list (no log output)."""
+
+    run_id: str
+    kind: Literal["daily", "retrain"]
+    trigger: str
+    reason: str = ""
+    status: RunStatus
+    started_at: datetime
+    finished_at: datetime | None = None
+    duration_s: float | None = None
+    current_step: str | None = None
+    git_commit: str | None = None
+    failed_steps: list[str] = Field(default_factory=list)
+    summary: dict[str, float | int | str | None] = Field(default_factory=dict)
+
+
+class PipelineRunList(BaseModel):
+    """``GET /api/pipeline/runs``."""
+
+    runs: list[PipelineRunSummary]
+
+
+class StageRecord(BaseModel):
+    """A DVC stage (or the ingestion job) executed by a run."""
+
+    stage: str
+    status: str
+    started_at: datetime | None = None
+    duration_s: float | None = None
+    metrics: dict[str, Any] = Field(default_factory=dict)
+    error: str | None = None
+    git_commit: str | None = None
+
+
+class PipelineRunDetail(PipelineRunSummary):
+    """``GET /api/pipeline/runs/{run_id}``: steps with log tails + stage records."""
+
+    steps: list[PipelineStep]
+    stages: list[StageRecord]
+    error: str | None = None
+
+
+class DagNode(BaseModel):
+    """A DVC stage with its most recent recorded execution."""
+
+    name: str
+    status: Literal["success", "failed", "running", "never"]
+    stale: bool = Field(description="inputs changed since the stage last ran (dvc status)")
+    last_run_at: datetime | None = None
+    duration_s: float | None = None
+    error: str | None = None
+    metrics: dict[str, Any] = Field(default_factory=dict)
+
+
+class DagResponse(BaseModel):
+    """``GET /api/pipeline/dag``."""
+
+    nodes: list[DagNode]
+    edges: list[tuple[str, str]]
+    generated_at: datetime
+
+
+class PipelineStats(BaseModel):
+    """``GET /api/pipeline/stats``: the last ``days`` days of runs."""
+
+    days: int
+    runs: int
+    by_status: dict[str, int]
+    success_rate: float | None
+    median_duration_s: dict[str, float]
+    latest_throughput: dict[str, float]
+
+
+class SchedulerStatus(BaseModel):
+    """``GET /api/pipeline/status``."""
+
+    reachable: bool
+    busy: bool
+    running_run_id: str | None = None
+    current_step: str | None = None
+    next_daily_run: datetime | None = None
+    schedule: dict[str, Any] = Field(default_factory=dict)
+    triggers_enabled: bool = False
+    detail: str = ""
+
+
+class TriggerRequest(BaseModel):
+    """``POST /api/pipeline/trigger`` body."""
+
+    kind: Literal["daily", "retrain"]
+    reason: str = Field(default="started from the console", max_length=200)
+
+
+class TriggerResponse(BaseModel):
+    """A run was accepted by the scheduler."""
+
+    run_id: str
+    kind: str

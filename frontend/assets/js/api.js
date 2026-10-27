@@ -11,6 +11,8 @@ const config = window.FINSIGHT_CONFIG || {};
 
 export const BACKEND_URL = String(config.backendUrl || "http://localhost:8000").replace(/\/+$/, "");
 export const MLFLOW_URL = String(config.mlflowUrl || "http://localhost:5000").replace(/\/+$/, "");
+export const PROMETHEUS_URL = String(config.prometheusUrl || "http://localhost:9090").replace(/\/+$/, "");
+export const GRAFANA_URL = String(config.grafanaUrl || "http://localhost:3000").replace(/\/+$/, "");
 
 const RETRYABLE_STATUS = new Set([502, 504]);
 
@@ -109,4 +111,12 @@ export const endpoints = {
   analyze: (texts, o) => api("/api/sentiment/analyze", { method: "POST", body: { texts }, timeoutMs: 30000, ...o }),
   health: (o) => api("/api/health", { retries: 0, timeoutMs: 8000, ...o }),
   modelInfo: (o) => api("/api/model-info", o),
+  // Pipeline Console (Day 7)
+  pipelineStatus: (o) => api("/api/pipeline/status", { retries: 0, timeoutMs: 10000, ...o }),
+  pipelineRuns: ({ status = "", limit = 30 } = {}, o) =>
+    api(`/api/pipeline/runs?limit=${limit}${status ? `&status=${encodeURIComponent(status)}` : ""}`, o),
+  pipelineRun: (runId, o) => api(`/api/pipeline/runs/${encodeURIComponent(runId)}`, o),
+  pipelineDag: (o) => api("/api/pipeline/dag", o),
+  pipelineStats: (days, o) => api(`/api/pipeline/stats?days=${days}`, o),
+  pipelineTrigger: (kind, reason, o) => api("/api/pipeline/trigger", { method: "POST", body: { kind, reason }, ...o }),
 };

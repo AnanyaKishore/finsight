@@ -40,6 +40,15 @@ export const fmtDay = (iso) => day.format(parseDay(iso));
 export const fmtShortDay = (iso) => shortDay.format(parseDay(iso));
 export const fmtStamp = (iso) => stamp.format(new Date(iso));
 
+/** Seconds -> "42 s", "3 min 05 s", "1 h 12 min". */
+export function fmtDuration(seconds) {
+  if (seconds == null || Number.isNaN(seconds)) return "–";
+  const s = Math.round(seconds);
+  if (s < 60) return `${s} s`;
+  if (s < 3600) return `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, "0")} s`;
+  return `${Math.floor(s / 3600)} h ${String(Math.round((s % 3600) / 60)).padStart(2, "0")} min`;
+}
+
 /** Create an element from an HTML string (single root). */
 export function html(markup) {
   const template = document.createElement("template");

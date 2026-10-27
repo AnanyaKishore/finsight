@@ -9,7 +9,12 @@ Every stage entry point wraps its work in :func:`stage_run`::
 which writes one document to ``pipeline_runs``::
 
     {run_id, pipeline: "dvc", stage: "validate", status: "success"|"failed",
-     started_at, finished_at, duration_s, metrics: {...}, error, git_commit}
+     started_at, finished_at, duration_s, metrics: {...}, error, git_commit,
+     pipeline_run_id}
+
+``pipeline_run_id`` (Day 7) links the stage to the scheduler run that started
+it (``FINSIGHT_PIPELINE_RUN_ID``, set by the scheduler); it is ``None`` when a
+stage is run by hand.
 
 Recording is *best effort* (graceful degradation): if MongoDB is unreachable,
 or recording is disabled with ``FINSIGHT_RUN_RECORDING=0`` (unit tests), the
@@ -62,6 +67,7 @@ class StageRun:
             "metrics": self.metrics,
             "error": self.error,
             "git_commit": git_commit(),
+            "pipeline_run_id": os.getenv("FINSIGHT_PIPELINE_RUN_ID") or None,
         }
 
 

@@ -38,6 +38,9 @@ SENTIMENT_WEEKLY = "sentiment_weekly"  # one document per (ticker, week)
 PORTFOLIOS = "portfolios"  # one document per optimisation date
 # Day 5: forecasts served by the API (one per ticker / origin / model version).
 FORECASTS = "forecasts"
+# Day 7: scheduler runs (one document per daily / retrain run) and the DVC DAG.
+PIPELINE_EXECUTIONS = "pipeline_executions"
+PIPELINE_DAG = "pipeline_dag"  # single document, refreshed after every run
 
 
 def get_client(settings: Settings, timeout_ms: int = 5000) -> MongoClient:
@@ -78,4 +81,8 @@ def ensure_indexes(db: Database) -> None:
         [("ticker", ASCENDING), ("as_of", ASCENDING), ("model_version", ASCENDING)], unique=True
     )
     db[FORECASTS].create_index([("ticker", ASCENDING), ("as_of", DESCENDING)])
+    db[PIPELINE_RUNS].create_index([("pipeline_run_id", ASCENDING)])
+    db[PIPELINE_EXECUTIONS].create_index([("run_id", ASCENDING)], unique=True)
+    db[PIPELINE_EXECUTIONS].create_index([("started_at", DESCENDING)])
+    db[PIPELINE_EXECUTIONS].create_index([("kind", ASCENDING), ("started_at", DESCENDING)])
     log.debug("mongo indexes ensured", extra={"db": db.name})
