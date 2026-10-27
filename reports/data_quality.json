@@ -235,8 +235,8 @@
       "details": null,
       "name": "prices.provider_mix",
       "observed": {
-        "marketstack": 2519,
-        "yfinance": 3
+        "marketstack": 2518,
+        "yfinance": 4
       },
       "severity": "info",
       "success": true
@@ -324,13 +324,14 @@
       "news_thin_weeks": 0,
       "news_weeks": 28,
       "outlier_days": 1,
-      "price_field": "adj_close",
+      "price_field": "close",
       "return_mean": 0.001068,
       "return_std": 0.015094,
       "rows": 253,
       "sessions_behind": 0,
       "sources": [
-        "marketstack"
+        "marketstack",
+        "yfinance"
       ]
     },
     "AMZN": {

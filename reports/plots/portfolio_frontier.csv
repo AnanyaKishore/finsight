@@ -1605,7 +1605,7 @@ volatility,expected_return,series
 0.123271,0.252772,grid sample
 0.177515,0.241434,grid sample
 0.130702,0.191519,grid sample
-0.136012,0.038931,grid sample
+0.136012,0.038932,grid sample
 0.111978,0.166383,grid sample
 0.166348,0.137246,grid sample
 0.145714,0.089365,grid sample
@@ -1648,7 +1648,7 @@ volatility,expected_return,series
 0.144855,0.148044,grid sample
 0.161956,0.145386,grid sample
 0.228793,-0.078042,grid sample
-0.183537,0.025789,grid sample
+0.183537,0.02579,grid sample
 0.185701,0.107028,grid sample
 0.205567,0.03568,grid sample
 0.210944,-0.012467,grid sample
@@ -1773,7 +1773,7 @@ volatility,expected_return,series
 0.22545,0.509413,grid sample
 0.183323,0.438788,grid sample
 0.132015,0.534998,grid sample
-0.151299,0.390907,grid sample
+0.151299,0.390908,grid sample
 0.151403,0.317524,grid sample
 0.193869,0.347605,grid sample
 0.163023,0.452312,grid sample
@@ -2006,7 +2006,7 @@ volatility,expected_return,series
 0.131151,0.295837,grid sample
 0.14818,0.257328,grid sample
 0.169469,0.196075,grid sample
-0.19355,0.190658,grid sample
+0.19355,0.190659,grid sample
 0.207775,0.226408,grid sample
 0.183846,0.135074,grid sample
 0.175468,0.0824,grid sample
@@ -2195,7 +2195,7 @@ volatility,expected_return,series
 0.188965,0.368444,grid sample
 0.127119,0.463779,grid sample
 0.155734,0.500505,grid sample
-0.179066,0.442079,grid sample
+0.179066,0.44208,grid sample
 0.198122,0.307443,grid sample
 0.140504,0.341525,grid sample
 0.161117,0.325761,grid sample
@@ -2228,7 +2228,7 @@ volatility,expected_return,series
 0.190155,0.127307,grid sample
 0.101767,0.353645,grid sample
 0.110286,0.397099,grid sample
-0.121181,0.350886,grid sample
+0.121181,0.350887,grid sample
 0.169687,0.306709,grid sample
 0.162252,0.152339,grid sample
 0.139931,0.31263,grid sample
@@ -2321,7 +2321,7 @@ volatility,expected_return,series
 0.106299,0.188358,grid sample
 0.113699,0.160196,grid sample
 0.16978,0.129024,grid sample
-0.112254,0.163106,grid sample
+0.112254,0.163107,grid sample
 0.131718,0.069266,grid sample
 0.21093,-0.038672,grid sample
 0.109268,0.180896,grid sample
@@ -2515,7 +2515,7 @@ volatility,expected_return,series
 0.154413,-0.160749,grid sample
 0.122932,-0.261475,grid sample
 0.142038,-0.135864,grid sample
-0.155435,-0.208466,grid sample
+0.155435,-0.208465,grid sample
 0.147978,-0.326807,grid sample
 0.144715,-0.429085,grid sample
 0.132343,0.43498,grid sample
@@ -2603,12 +2603,12 @@ volatility,expected_return,series
 0.179784,0.138232,grid sample
 0.136751,0.171062,grid sample
 0.172775,0.086593,grid sample
-0.15508,0.074462,grid sample
+0.15508,0.074463,grid sample
 0.157316,0.060058,grid sample
 0.149259,0.004473,grid sample
 0.179154,0.210717,grid sample
 0.178984,0.135298,grid sample
-0.189913,0.067894,grid sample
+0.189913,0.067895,grid sample
 0.207907,-0.085311,grid sample
 0.185313,0.120922,grid sample
 0.217302,0.118163,grid sample
@@ -2754,7 +2754,7 @@ volatility,expected_return,series
 0.184045,0.0665,grid sample
 0.18816,0.048701,grid sample
 0.153783,0.258598,grid sample
-0.104695,0.23622,grid sample
+0.104695,0.236221,grid sample
 0.121233,0.121822,grid sample
 0.127801,0.081278,grid sample
 0.099453,0.175361,grid sample
@@ -2805,7 +2805,7 @@ volatility,expected_return,series
 0.097133,0.057153,grid sample
 0.110345,0.302107,grid sample
 0.111612,0.260688,grid sample
-0.153463,0.250225,grid sample
+0.153463,0.250226,grid sample
 0.144838,0.194641,grid sample
 0.170037,0.234461,grid sample
 0.141269,0.105746,grid sample
@@ -2840,7 +2840,7 @@ volatility,expected_return,series
 0.18053,0.420706,grid sample
 0.144857,0.582963,grid sample
 0.113297,0.556585,grid sample
-0.133381,0.372825,grid sample
+0.133381,0.372826,grid sample
 0.159086,0.276698,grid sample
 0.118672,0.538786,grid sample
 0.154528,0.41061,grid sample
@@ -2858,14 +2858,14 @@ volatility,expected_return,series
 0.156318,0.455099,grid sample
 0.089792,0.334559,grid sample
 0.121367,0.232762,grid sample
-0.113807,0.31109,grid sample
+0.113807,0.311091,grid sample
 0.13184,0.181903,grid sample
 0.123739,0.186067,grid sample
 0.105417,0.316277,grid sample
 0.145101,0.114499,grid sample
 0.101664,0.091493,grid sample
 0.119574,0.006541,grid sample
-0.181977,0.372989,grid sample
+0.181977,0.37299,grid sample
 0.16096,0.150653,grid sample
 0.146826,0.380693,grid sample
 0.131713,0.368563,grid sample
@@ -2879,7 +2879,7 @@ volatility,expected_return,series
 0.109869,0.157403,grid sample
 0.145082,0.275358,grid sample
 0.125567,0.164189,grid sample
-0.139489,0.171169,grid sample
+0.139489,0.17117,grid sample
 0.122998,0.169387,grid sample
 0.172766,0.013569,grid sample
 0.122321,0.137329,grid sample
@@ -2906,7 +2906,7 @@ volatility,expected_return,series
 0.098661,0.159561,grid sample
 0.108433,0.090122,grid sample
 0.106081,0.039735,grid sample
-0.143605,0.139186,grid sample
+0.143605,0.139187,grid sample
 0.137754,0.161931,grid sample
 0.158021,0.121168,grid sample
 0.185894,0.115499,grid sample
@@ -2934,9 +2934,9 @@ volatility,expected_return,series
 0.112933,0.184028,grid sample
 0.117606,0.083785,grid sample
 0.120506,0.101437,grid sample
-0.127641,0.308702,grid sample
+0.127641,0.308703,grid sample
 0.154816,-0.032535,grid sample
-0.164105,-0.111336,grid sample
+0.164105,-0.111335,grid sample
 0.150234,0.233948,grid sample
 0.129016,0.116629,grid sample
 0.149949,0.054354,grid sample
@@ -2954,7 +2954,7 @@ volatility,expected_return,series
 0.109961,0.265131,grid sample
 0.170377,0.089731,grid sample
 0.116492,0.174983,grid sample
-0.10943,0.119398,grid sample
+0.10943,0.119399,grid sample
 0.129469,0.327502,grid sample
 0.120149,0.216333,grid sample
 0.156147,0.139096,grid sample
@@ -2969,7 +2969,7 @@ volatility,expected_return,series
 0.136161,0.234565,grid sample
 0.197399,0.111587,grid sample
 0.191542,0.056003,grid sample
-0.117623,0.346194,grid sample
+0.117623,0.346195,grid sample
 0.109452,0.269177,grid sample
 0.114716,0.204867,grid sample
 0.123986,0.148811,grid sample
@@ -2988,7 +2988,7 @@ volatility,expected_return,series
 0.120552,0.352785,grid sample
 0.131938,0.126196,grid sample
 0.129055,0.097301,grid sample
-0.106252,0.330394,grid sample
+0.106252,0.330395,grid sample
 0.185393,0.06043,grid sample
 0.106514,0.24795,grid sample
 0.121561,0.110807,grid sample

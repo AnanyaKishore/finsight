@@ -17,10 +17,10 @@
     "path": "data/raw/prices.parquet",
     "rows": 2522,
     "rows_per_source": {
-      "marketstack": 2519,
-      "yfinance": 3
+      "marketstack": 2518,
+      "yfinance": 4
     },
-    "sha256": "3ff8667967eb68a25982f54e5169e940357ab07887c91c12196347c7bf46a075",
+    "sha256": "78679095e910664e8361261866eea9e27cc08ee586be0d358f35a8ccbc5d9600",
     "tickers": 10
   }
 }
