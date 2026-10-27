@@ -9,9 +9,9 @@ stages:
       size: 1957
     - path: src
       hash: md5
-      md5: 9367a8f67529f684b392afeb8ac4f0ef.dir
-      size: 376674
-      nfiles: 66
+      md5: 43338ca57a9642a8676c8a77489e9b9f.dir
+      size: 441655
+      nfiles: 77
     - path: tests/conftest.py
       hash: md5
       md5: bdf409712c5c962aa197a1e039361967
@@ -22,13 +22,13 @@ stages:
       size: 5804
     - path: tests/unit
       hash: md5
-      md5: b7ef0b97dd91bb260808dd6afbeca3cd.dir
-      size: 120305
-      nfiles: 17
+      md5: d987bb52ebab888b436afde5350d3028.dir
+      size: 155228
+      nfiles: 19
     outs:
     - path: reports/unit_tests.json
       hash: md5
-      md5: 8c55a75a3146ac7459aafea620f9f4f4
+      md5: 2907f9d2f0a49fc6d90aebea57fcbd81
       size: 100
   export:
     cmd: python -m finsight.data.export
@@ -39,7 +39,7 @@ stages:
       size: 1561
     - path: reports/unit_tests.json
       hash: md5
-      md5: 8c55a75a3146ac7459aafea620f9f4f4
+      md5: 2907f9d2f0a49fc6d90aebea57fcbd81
       size: 100
     - path: src/finsight/data/export.py
       hash: md5
@@ -54,27 +54,27 @@ stages:
     outs:
     - path: data/raw/news.parquet
       hash: md5
-      md5: 205a845500700230ed80916e47666721
-      size: 4947559
+      md5: 0b6372425e728f2ca6a970a851a779d0
+      size: 5101645
     - path: data/raw/prices.parquet
       hash: md5
-      md5: 67df3d13871742c69564be75d1084ab3
-      size: 100811
+      md5: 5f94244958094edd493ce86c0fc10d4f
+      size: 101220
     - path: reports/export_manifest.json
       hash: md5
-      md5: df1f60eff239c86037ffdc97650ba243
+      md5: dbfee45295dc3b14b9cb00eed8881574
       size: 563
   validate:
     cmd: python -m finsight.data.validate
     deps:
     - path: data/raw/news.parquet
       hash: md5
-      md5: 205a845500700230ed80916e47666721
-      size: 4947559
+      md5: 0b6372425e728f2ca6a970a851a779d0
+      size: 5101645
     - path: data/raw/prices.parquet
       hash: md5
-      md5: 67df3d13871742c69564be75d1084ab3
-      size: 100811
+      md5: 5f94244958094edd493ce86c0fc10d4f
+      size: 101220
     - path: src/finsight/common/timeutils.py
       hash: md5
       md5: a65a7646bd7b9f4196acd1b401c5fa09
@@ -97,23 +97,23 @@ stages:
     outs:
     - path: reports/data_quality.json
       hash: md5
-      md5: 3a5f16aa09ca403d6a0f6de1723e5ec5
-      size: 11329
+      md5: 3d2dee8a4f99e7d4d48bc855ba255092
+      size: 11331
   process:
     cmd: python -m finsight.etl.process
     deps:
     - path: data/raw/news.parquet
       hash: md5
-      md5: 205a845500700230ed80916e47666721
-      size: 4947559
+      md5: 0b6372425e728f2ca6a970a851a779d0
+      size: 5101645
     - path: data/raw/prices.parquet
       hash: md5
-      md5: 67df3d13871742c69564be75d1084ab3
-      size: 100811
+      md5: 5f94244958094edd493ce86c0fc10d4f
+      size: 101220
     - path: reports/data_quality.json
       hash: md5
-      md5: 3a5f16aa09ca403d6a0f6de1723e5ec5
-      size: 11329
+      md5: 3d2dee8a4f99e7d4d48bc855ba255092
+      size: 11331
     - path: src/finsight/etl
       hash: md5
       md5: 6e5dee3f48c4c05fe145ce07dfa3520c.dir
@@ -137,23 +137,23 @@ stages:
     outs:
     - path: data/processed/news
       hash: md5
-      md5: 157f512ab22a695cfc1624e9ede5adc7.dir
-      size: 5155295
+      md5: fa8f91db665997620097f3cdfd9ece3d.dir
+      size: 5329528
       nfiles: 10
     - path: data/processed/news_weekly
       hash: md5
-      md5: ff9c030795b3e86cafb6a7a402067119.dir
-      size: 7229
+      md5: a849635d9ad271e20304f106af4ea49b.dir
+      size: 7220
       nfiles: 1
     - path: data/processed/prices
       hash: md5
-      md5: 6cc626533123a3686f3ab47e836da7cf.dir
-      size: 367604
+      md5: 1cbbf788b94dbd2a187a216effed08f9.dir
+      size: 368757
       nfiles: 10
     - path: reports/etl_metrics.json
       hash: md5
-      md5: c21ed50655eb3aac3d405faf0dd58f7a
-      size: 1416
+      md5: e84248d04aeb8833b8819a4712c0e5c8
+      size: 1418
   train_lstm:
     cmd: python -m finsight.models.lstm.train
     deps:
@@ -374,8 +374,8 @@ stages:
     deps:
     - path: data/processed/news
       hash: md5
-      md5: 157f512ab22a695cfc1624e9ede5adc7.dir
-      size: 5155295
+      md5: fa8f91db665997620097f3cdfd9ece3d.dir
+      size: 5329528
       nfiles: 10
     - path: models/sentiment/candidates/distilbert_sst2
       hash: md5
@@ -409,23 +409,23 @@ stages:
     outs:
     - path: data/sentiment/article_scores.parquet
       hash: md5
-      md5: 2d3c11fb5c2bf6c2f22b9abebd016aaa
-      size: 4122505
+      md5: f6c5cb6836f2722ff5d4e9087a58b7f6
+      size: 4260205
     - path: data/sentiment/weekly.parquet
       hash: md5
-      md5: 83f0aa7a8c6cffb4bdf490550f15e229
-      size: 214732
+      md5: fef6dd314b60642fb2eefbd0ec4224c0
+      size: 218186
     - path: reports/sentiment_scoring.json
       hash: md5
-      md5: 576d33c7b13347db30f6872c978cd3f5
-      size: 374
+      md5: 41500e8c4b32c3fe431448981cc2173e
+      size: 373
   optimize_portfolio:
     cmd: python -m finsight.portfolio.optimize
     deps:
     - path: data/processed/prices
       hash: md5
-      md5: 6cc626533123a3686f3ab47e836da7cf.dir
-      size: 367604
+      md5: 1cbbf788b94dbd2a187a216effed08f9.dir
+      size: 368757
       nfiles: 10
     - path: src/finsight/portfolio
       hash: md5
@@ -447,32 +447,32 @@ stages:
     outs:
     - path: reports/plots/portfolio_allocation.png
       hash: md5
-      md5: f185e82c1f261f221984cc94b43da382
-      size: 35937
+      md5: 75c255f0a49ca58605a4ac817ea2864a
+      size: 35224
     - path: reports/plots/portfolio_backtest.csv
       hash: md5
-      md5: 49019dbba412adddde1d647c19dff020
-      size: 8449
+      md5: c289aa436c22266a0a7373f918752b92
+      size: 8487
     - path: reports/plots/portfolio_backtest.png
       hash: md5
-      md5: 9f0c61dc4485a9f195d3228ddd1151cc
-      size: 100984
+      md5: 68602bd59350ffdaa8de39557e6c0964
+      size: 102563
     - path: reports/plots/portfolio_frontier.csv
       hash: md5
-      md5: 2acf26d31a3acdf7f9a5eb49563264ce
-      size: 90595
+      md5: 17362372152675141c45731b183159f1
+      size: 90402
     - path: reports/plots/portfolio_frontier.png
       hash: md5
-      md5: d8fd4035825b08e172cd84fa34a88cda
-      size: 182452
+      md5: 64776ee5337901afaaa8bfbe85635322
+      size: 180889
     - path: reports/portfolio.json
       hash: md5
-      md5: 5741802e61dbd91b859b959de6b6a90a
-      size: 397
+      md5: 53410e1d2dac2af21671052b548cfe50
+      size: 398
     - path: reports/portfolio_backtest.json
       hash: md5
-      md5: ec2540a4c9cd1226a5937ce4b38ad654
-      size: 18218
+      md5: d69c4111528b654dc3f47d11c78a49aa
+      size: 18224
   fetch_sentiment@distilbert_sst2:
     cmd: python -m finsight.sentiment.fetch model distilbert_sst2
     deps:
