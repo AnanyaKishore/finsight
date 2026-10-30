@@ -1,91 +1,91 @@
 {
-  "run_id": "84267e7b3550",
+  "run_id": "09a6b2beee82",
   "mode": "incremental",
-  "started_at": "2026-10-29 02:32:58.377596+00:00",
+  "started_at": "2026-10-30 07:06:33.730361+00:00",
   "pipeline": "ingestion",
   "status": "success",
-  "finished_at": "2026-10-29 02:33:36.956220+00:00",
-  "duration_s": 38.579,
+  "finished_at": "2026-10-30 07:07:13.018739+00:00",
+  "duration_s": 39.288,
   "prices": {
     "fetched": 10,
     "inserted": 10,
     "updated": 0,
     "per_ticker": {
       "AAPL": {
-        "from": "2026-10-28",
-        "to": "2026-10-28",
+        "from": "2026-10-29",
+        "to": "2026-10-29",
         "provider": "marketstack",
         "rows": 1,
         "inserted": 1,
         "updated": 0
       },
       "MSFT": {
-        "from": "2026-10-28",
-        "to": "2026-10-28",
+        "from": "2026-10-29",
+        "to": "2026-10-29",
         "provider": "marketstack",
         "rows": 1,
         "inserted": 1,
         "updated": 0
       },
       "GOOGL": {
-        "from": "2026-10-28",
-        "to": "2026-10-28",
+        "from": "2026-10-29",
+        "to": "2026-10-29",
         "provider": "marketstack",
         "rows": 1,
         "inserted": 1,
         "updated": 0
       },
       "AMZN": {
-        "from": "2026-10-28",
-        "to": "2026-10-28",
+        "from": "2026-10-29",
+        "to": "2026-10-29",
         "provider": "marketstack",
         "rows": 1,
         "inserted": 1,
         "updated": 0
       },
       "TSLA": {
-        "from": "2026-10-28",
-        "to": "2026-10-28",
+        "from": "2026-10-29",
+        "to": "2026-10-29",
         "provider": "marketstack",
         "rows": 1,
         "inserted": 1,
         "updated": 0
       },
       "NVDA": {
-        "from": "2026-10-28",
-        "to": "2026-10-28",
+        "from": "2026-10-29",
+        "to": "2026-10-29",
         "provider": "marketstack",
         "rows": 1,
         "inserted": 1,
         "updated": 0
       },
       "META": {
-        "from": "2026-10-28",
-        "to": "2026-10-28",
+        "from": "2026-10-29",
+        "to": "2026-10-29",
         "provider": "marketstack",
         "rows": 1,
         "inserted": 1,
         "updated": 0
       },
       "JPM": {
-        "from": "2026-10-28",
-        "to": "2026-10-28",
+        "from": "2026-10-29",
+        "to": "2026-10-29",
         "provider": "marketstack",
         "rows": 1,
         "inserted": 1,
         "updated": 0
       },
       "WMT": {
-        "from": "2026-10-28",
-        "to": "2026-10-28",
+        "from": "2026-10-29",
+        "to": "2026-10-29",
         "provider": "marketstack",
         "rows": 1,
         "inserted": 1,
         "updated": 0
       },
       "V": {
-        "from": "2026-10-28",
-        "to": "2026-10-28",
+        "from": "2026-10-29",
+        "to": "2026-10-29",
         "provider": "marketstack",
         "rows": 1,
         "inserted": 1,
@@ -95,67 +95,67 @@
   },
   "news": {
     "fetched": 400,
-    "inserted": 271,
+    "inserted": 325,
     "updated": 0,
     "per_ticker": {
       "AAPL": {
         "windows": 1,
         "rows": 40,
-        "inserted": 23,
+        "inserted": 31,
         "errors": 0
       },
       "MSFT": {
         "windows": 1,
         "rows": 40,
-        "inserted": 32,
+        "inserted": 40,
         "errors": 0
       },
       "GOOGL": {
         "windows": 1,
         "rows": 40,
-        "inserted": 30,
+        "inserted": 39,
         "errors": 0
       },
       "AMZN": {
         "windows": 1,
         "rows": 40,
-        "inserted": 29,
+        "inserted": 36,
         "errors": 0
       },
       "TSLA": {
         "windows": 1,
         "rows": 40,
-        "inserted": 22,
+        "inserted": 33,
         "errors": 0
       },
       "NVDA": {
         "windows": 1,
         "rows": 40,
-        "inserted": 38,
+        "inserted": 39,
         "errors": 0
       },
       "META": {
         "windows": 1,
         "rows": 40,
-        "inserted": 31,
+        "inserted": 37,
         "errors": 0
       },
       "JPM": {
         "windows": 1,
         "rows": 40,
-        "inserted": 23,
+        "inserted": 17,
         "errors": 0
       },
       "WMT": {
         "windows": 1,
         "rows": 40,
-        "inserted": 21,
+        "inserted": 27,
         "errors": 0
       },
       "V": {
         "windows": 1,
         "rows": 40,
-        "inserted": 22,
+        "inserted": 26,
         "errors": 0
       }
     }
@@ -170,5 +170,5 @@
   "errors": [],
   "tasks_ok": 20,
   "tasks_skipped": 0,
-  "throughput_rows_per_s": 10.63
+  "throughput_rows_per_s": 10.44
 }
