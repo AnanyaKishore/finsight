@@ -1,23 +1,23 @@
 {
-  "run_id": "684c739e6c75459c8519ceed4301fd18",
+  "run_id": "058edd597ce7440182a9667dc9a94d41",
   "test_windows": 150,
   "model": {
-    "rmse": 17.0587,
-    "mape": 2.9521,
-    "directional_accuracy": 0.5929
+    "rmse": 18.8566,
+    "mape": 3.2101,
+    "directional_accuracy": 0.5958
   },
   "naive": {
-    "rmse": 17.1965,
-    "mape": 2.9691
+    "rmse": 18.4925,
+    "mape": 3.3394
   },
   "drift": {
-    "rmse": 17.738,
-    "mape": 3.1571,
-    "directional_accuracy": 0.4852
+    "rmse": 19.8767,
+    "mape": 3.4888,
+    "directional_accuracy": 0.5081
   },
-  "up_share": 0.611,
-  "skill_vs_naive": 0.0057,
+  "up_share": 0.6119,
+  "skill_vs_naive": 0.0387,
   "beats_naive": true,
-  "attribution_latest_block_pct": 3.2106,
-  "attribution_older_blocks_max_pct": 0.0812
+  "attribution_latest_block_pct": 3.0943,
+  "attribution_older_blocks_max_pct": 0.1255
 }

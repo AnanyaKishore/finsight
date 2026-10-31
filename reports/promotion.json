@@ -2,19 +2,19 @@
   "lstm": {
     "decision": {
       "challenger_accepted": true,
-      "challenger_metric": 2.9521,
-      "challenger_version": "2",
-      "champion_metric": 2.952122,
-      "champion_version": "1",
+      "challenger_metric": 3.2101,
+      "challenger_version": "3",
+      "champion_metric": 3.224732,
+      "champion_version": "2",
       "metric": "test_mape",
       "promote": true,
-      "reason": "challenger better by 0.000022 test_mape"
+      "reason": "challenger better by 0.014632 test_mape"
     },
     "production": {
-      "model_uri": "models:/finsight-lstm/2",
+      "model_uri": "models:/finsight-lstm/3",
       "registered_name": "finsight-lstm",
-      "run_id": "684c739e6c75459c8519ceed4301fd18",
-      "version": "2"
+      "run_id": "058edd597ce7440182a9667dc9a94d41",
+      "version": "3"
     }
   },
   "sentiment": {
@@ -23,20 +23,20 @@
         "accepted": true,
         "metric": 0.4605,
         "rolled_back": false,
-        "version": "3"
+        "version": "5"
       },
       "finbert": {
         "accepted": true,
         "metric": 0.6575,
         "rolled_back": false,
-        "version": "4"
+        "version": "6"
       }
     },
     "decision": {
       "best_candidate": "finbert",
       "challenger_accepted": true,
       "challenger_metric": 0.6575,
-      "challenger_version": "4",
+      "challenger_version": "6",
       "champion_metric": 0.6575,
       "champion_version": "2",
       "metric": "gate_macro_f1",
