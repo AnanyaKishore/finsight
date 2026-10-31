@@ -390,7 +390,9 @@ def test_api_requires_the_token_and_answers_202_then_409(scheduler_api):
     assert wrong.status_code == 401
     ok = client.post("/run", json={"kind": "daily"}, headers={"X-Finsight-Token": TOKEN})
     assert ok.status_code == 202 and ok.json()["kind"] == "daily"
-    busy = client.post("/retrain", json={}, headers={"Authorization": f"Bearer {TOKEN}"})
+    busy = client.post(
+        "/run", json={"kind": "retrain"}, headers={"Authorization": f"Bearer {TOKEN}"}
+    )
     assert busy.status_code == 409 and busy.json()["error"]["run_id"] == ok.json()["run_id"]
     status = client.get("/status").json()
     assert status["busy"] and status["running"]["run_id"] == ok.json()["run_id"]
@@ -415,6 +417,37 @@ def test_retrain_webhook_uses_alert_names_and_ignores_resolved(scheduler_api):
     doc = service.store.get(started.json()["run_id"])
     assert doc["kind"] == "retrain" and doc["trigger"] == "webhook"
     assert doc["reason"] == "alert: LstmMapeDrift"
+
+
+def test_retrain_alert_during_a_daily_run_is_queued_not_lost(scheduler_api):
+    client, service, gate = scheduler_api
+    auth = {"Authorization": f"Bearer {TOKEN}"}
+    daily = client.post("/run", json={"kind": "daily"}, headers=auth).json()["run_id"]
+    body = {"status": "firing", "alerts": [{"labels": {"alertname": "ReturnsDriftDetected"}}]}
+    queued = client.post("/retrain", json=body, headers=auth)
+    assert queued.status_code == 202 and queued.json() == {
+        "queued": True,
+        "after_run_id": daily,
+        "reason": "alert: ReturnsDriftDetected",
+    }
+    assert client.get("/status").json()["queued_retrain"] == "alert: ReturnsDriftDetected"
+    assert service.tick() is None  # still busy: nothing starts
+    gate.set()
+    for thread in list(service._threads):
+        thread.join(5)
+    run_id = service.tick()  # the loop's next check starts the queued retrain
+    doc = service.store.get(run_id)
+    assert doc["kind"] == "retrain" and doc["trigger"] == "webhook"
+    assert doc["reason"] == "alert: ReturnsDriftDetected" and service.queued_retrain is None
+
+
+def test_retrain_alert_during_a_retrain_is_ignored(scheduler_api):
+    client, service, _ = scheduler_api
+    auth = {"Authorization": f"Bearer {TOKEN}"}
+    running = client.post("/run", json={"kind": "retrain"}, headers=auth).json()["run_id"]
+    again = client.post("/retrain", json={"status": "firing", "alerts": []}, headers=auth)
+    assert again.status_code == 200 and again.json()["run_id"] == running
+    assert service.queued_retrain is None
 
 
 def test_api_without_token_disables_triggers(make_service):

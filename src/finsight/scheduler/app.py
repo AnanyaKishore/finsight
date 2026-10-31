@@ -13,7 +13,10 @@
 ``X-Finsight-Token: <token>`` or ``Authorization: Bearer <token>`` (the form
 Alertmanager sends). Without a configured token, starting runs over HTTP is
 disabled. Answers: ``202`` started, ``409`` a run is in progress, ``401`` bad
-token, ``422`` bad request. Alertmanager also posts when an alert *resolves*;
+token, ``422`` bad request. A ``/retrain`` alert that arrives during a daily run
+is not refused: it is queued (``202 {"queued": true}``) and starts when the run
+ends, because Alertmanager would not send it again for a day. Alertmanager
+also posts when an alert *resolves*;
 ``/retrain`` answers those with ``200 ignored`` and starts nothing, and it
 also ignores (``200``) alerts that arrive within ``monitoring.retrain_cooldown_h``
 of the last retrain, so a drift that persists cannot retrain in a loop.
@@ -118,7 +121,21 @@ def create_app(service: SchedulerService, token: str | None) -> FastAPI:
                     "reason": reason,
                 }
             )
-        return start("retrain", "webhook", reason[:200])
+        try:
+            run_id = service.start("retrain", "webhook", reason[:200])
+        except Busy as exc:
+            waits_for = service.queue_retrain(reason)
+            if waits_for is None:
+                return JSONResponse(
+                    {"ignored": "a retrain is already running", "run_id": exc.run_id}
+                )
+            return JSONResponse(
+                status_code=202,
+                content={"queued": True, "after_run_id": waits_for, "reason": reason},
+            )
+        return JSONResponse(
+            status_code=202, content={"run_id": run_id, "kind": "retrain", "trigger": "webhook"}
+        )
 
     @app.post("/monitor")
     def monitor(request: Request) -> Any:

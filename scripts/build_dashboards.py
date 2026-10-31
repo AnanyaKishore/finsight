@@ -406,10 +406,12 @@ def infrastructure() -> Board:
              [("sum by (type) (rate(mongodb_op_counters_total[5m]))", "{{type}}")], unit="ops", w=10)  # fmt: skip
     b.series("MongoDB connections", [('mongodb_connections{state="current"}', "current")],
              decimals=0, w=10)  # fmt: skip
-    b.stat("nginx", 'max(nginx_up)', mappings=UP_DOWN, w=4)
+    b.stat("nginx", "max(nginx_up)", mappings=UP_DOWN, w=4)
     b.series("Portal requests per second", [("rate(nginx_http_requests_total[5m])", "requests")],
              unit="reqps", w=10)  # fmt: skip
-    b.series("Portal active connections", [("nginx_connections_active", "active")], decimals=0, w=10)
+    b.series(
+        "Portal active connections", [("nginx_connections_active", "active")], decimals=0, w=10
+    )
     return b
 
 

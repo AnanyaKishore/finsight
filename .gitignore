@@ -3,6 +3,8 @@
 *.key
 secrets/*.key
 secrets/.env
+# Encrypted snapshots stay on this machine (copy them to a USB drive yourself).
+/backups/
 
 # ---- DVC-managed outputs (tracked through dvc.lock / .dvc files instead) ----
 /data/*
@@ -54,5 +56,3 @@ Thumbs.db
 
 # ---- DVC plot renders (regenerate with `dvc plots show`) ----
 dvc_plots/
-
-images/

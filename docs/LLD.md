@@ -149,7 +149,7 @@ Alerts come from Alertmanager (`active, unsilenced, uninhibited`, sorted critica
 | `GET /health` | `{status: ok, busy}` (compose healthcheck) |
 | `GET /status` | busy, the running run document, next daily run, last finished run, schedule |
 | `POST /run` `{kind, reason, trigger: console\|api}` | token required; `202 {run_id}`, `409 busy`, `401`, `503 trigger_disabled` |
-| `POST /retrain` | Alertmanager webhook body; token as `Authorization: Bearer`; reason = alert names; `status: resolved` → `200 ignored`; within `monitoring.retrain_cooldown_h` (24 h) of the last retrain → `200 {ignored: cooldown, retry_after_s}` |
+| `POST /retrain` | Alertmanager webhook body; token as `Authorization: Bearer`; reason = alert names; `status: resolved` → `200 ignored`; within `monitoring.retrain_cooldown_h` (24 h) of the last retrain → `200 {ignored: cooldown, retry_after_s}`; while a daily run is busy → `202 {queued: true, after_run_id}` and the retrain starts as soon as that run ends (Alertmanager does not retry a 4xx, so a 409 would lose it); while a retrain is already running → `200 {ignored: a retrain is already running}`; otherwise `202 {run_id}` |
 | `POST /monitor` | token required; recompute the monitoring report now → `{summary, report}`; `503 monitoring_disabled` |
 | `GET /metrics` | `finsight_pipeline_runs_total{kind,status}`, `_last_run_status{kind}` (1 / 0.5 / 0), `_last_run_timestamp_seconds{kind}`, `_last_run_duration_seconds{kind}`, `_step_duration_seconds{step}`, `_step_failures_total{step}`, `finsight_pipeline_running`, `finsight_pipeline_throughput{measure}`, `finsight_retrains_triggered_total{trigger}`, `finsight_retrains_skipped_total`, and the monitoring gauges (§6.2) |
 
@@ -345,6 +345,30 @@ Verified in the Day 5 rehearsal (lstm-serve stopped → stored forecast served, 
 | Pipeline Console: scheduler card, buttons | `GET /api/pipeline/status` (every 5 s while a run is in progress, else 30 s), `POST /api/pipeline/trigger` |
 | Pipeline Console: DAG, history, details, charts | `GET /api/pipeline/dag`, `/runs`, `/runs/{id}`, `/stats` |
 
+## 8b. Security (Day 9)
+
+| Property | How | Checked by |
+|---|---|---|
+| Secrets out of Git | `.env` (API keys, passwords, tokens) is git-ignored; a pre-commit hook refuses `.env`, `*.key`, `*.pem` | `test_secrets_and_keys_are_git_ignored_and_backups_too`, hook `no-plaintext-secrets` |
+| Secrets encrypted at rest | `secrets/.env.enc` = Fernet (AES-128-CBC + HMAC-SHA256) of `.env`; safe to commit; `python -m finsight.security.secrets encrypt / decrypt / check` | `test_env_encrypt_decrypt_and_check` |
+| Key handling | one key at `~/.config/finsight/secret.key` (or `$FINSIGHT_KEY_FILE`), created with mode 600, never overwritten, refused if inside the repository or readable by others | `test_key_is_private_never_overwritten_and_never_in_the_repo`, `secrets check` |
+| Snapshots and model artifacts encrypted at rest | `python -m finsight.security.backup create [--include-models]`: MongoDB (Extended JSON), reports, params, `dvc.lock`, configs, optionally `models/`, streamed as tar.gz through the encrypting writer into `backups/*.tar.enc` (mode 600, git-ignored); `manifest.json` holds a SHA-256 per file; `verify` checks all of it; `restore` never writes the live database | `test_backup_round_trip_keeps_types_and_files`, `test_backup_without_models_and_tampering` |
+| Tamper evidence | file = `FSENC1\n` + chunks (4-byte length, Fernet token); each chunk's plaintext starts with its index and a last-chunk flag, so a modified, dropped, reordered or truncated chunk is refused | `test_dropped_reordered_or_truncated_chunks_are_detected`, `test_wrong_key_and_modified_bytes_are_refused` |
+| Database authentication | MongoDB starts with a root user from `.env`; every client authenticates | `test_no_plaintext_secrets_in_compose_and_mongo_requires_auth`, e2e `test_mongodb_refuses_connections_without_credentials` |
+| Network exposure | every published port is bound to `127.0.0.1`; exporters and the nginx status page are not published at all | `test_every_published_port_is_bound_to_localhost` |
+| Least privilege | every image we build ends with a non-root `USER`; the scheduler runs as the host user | `test_images_we_build_run_as_a_non_root_user` |
+| Authenticated control endpoints | scheduler `/run`, `/retrain`, `/monitor` need `SCHEDULER_TOKEN`; Grafana needs a login | e2e `test_scheduler_and_mlflow_are_up` (401 without the token), `test_alertmanager_and_grafana_are_up` (Grafana API 401 without a login) |
+| Browser hardening | CORS limited to the portal origin; the portal sends CSP, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` | `test_backend_cors_is_not_open_to_everyone`, e2e `test_cors_allows_the_portal_only`, `test_portal_serves_the_app_with_security_headers` |
+| Dependency hygiene | versions pinned in `requirements/*.txt`; `make audit` (pip-audit) lists known CVEs | manual, before a release |
+
+Encrypted file format (`finsight.security.crypto`):
+
+```
+MAGIC  b"FSENC1\n"
+repeat: uint32 big-endian length N, then N bytes = Fernet token of
+        (uint64 chunk index, uint8 last-flag, up to 4 MiB of plaintext)
+```
+
 ## 9. Code structure
 
 | Package | Responsibility |
@@ -360,5 +384,6 @@ Verified in the Day 5 rehearsal (lstm-serve stopped → stored forecast served, 
 | `finsight.api` | FastAPI app, schemas, repository, model client, metrics, pipeline endpoints, entry point |
 | `finsight.scheduler` | `schedule` (when), `plan` (steps), `runner` (subprocess + timeout), `store` (Mongo), `dag`, `versioning` (dvc push, local commit), `service` (loop, one run at a time, metrics), `app` (HTTP API) |
 | `docker/serve_watch.py` | serving containers: serve the `@production` version, exit when the alias moves |
+| `finsight.security` | `crypto` (key file, chunked Fernet streams), `secrets` (`.env` ↔ `secrets/.env.enc`), `backup` (encrypted snapshots) |
 | `finsight.ci` | unit-test gate stage |
 | `frontend/` | portal pages (`index.html`, `help.html`), `assets/js` (`api`, `search`, `charts`, `format`, `app`, `pipeline`), `nginx/` template + start-up check |

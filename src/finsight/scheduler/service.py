@@ -160,6 +160,7 @@ class SchedulerService:
         self._lock = threading.Lock()
         self._monitor_lock = threading.Lock()
         self._current: str | None = None
+        self._queued_retrain: str | None = None  # reason of a webhook retrain waiting for a run
         self._threads: list[threading.Thread] = []
 
     # ------------------------------------------------------------- control
@@ -252,10 +253,38 @@ class SchedulerService:
             thread.join()
         return run_id
 
+    def queue_retrain(self, reason: str) -> str | None:
+        """Remember a webhook retrain that arrived during another run.
+
+        Alertmanager does not retry a refused webhook and repeats a retrain
+        alert only once a day, so a ``409`` would lose it. The loop starts the
+        queued retrain as soon as the current run ends. Returns the ``run_id``
+        of the run it waits for, or ``None`` when that run is itself a retrain
+        (nothing is queued: the retrain it asks for is already happening).
+        """
+        running = self.store.get(self._current) if self._current else None
+        if running and running.get("kind") == "retrain":
+            return None
+        self._queued_retrain = reason[:200] or "queued alert"
+        log.info("retrain queued", extra={"after_run_id": self._current, "reason": reason})
+        return self._current
+
+    @property
+    def queued_retrain(self) -> str | None:
+        """Reason of the retrain waiting for the current run, if any."""
+        return self._queued_retrain
+
     def tick(self) -> str | None:
-        """Start the daily run if it is due; return its ``run_id``."""
+        """Start a queued retrain, or the daily run if it is due; return its ``run_id``."""
         if self.busy:
             return None
+        if self._queued_retrain is not None:
+            reason, self._queued_retrain = self._queued_retrain, None
+            try:
+                return self.start("retrain", "webhook", reason)
+            except Busy:
+                self._queued_retrain = reason
+                return None
         now = self.clock()
         if not self.schedule.is_due(now, self.store.last_daily_start()):
             return None
@@ -282,6 +311,7 @@ class SchedulerService:
         return {
             "busy": self.busy,
             "running": running,
+            "queued_retrain": self._queued_retrain,
             "next_daily_run": self.schedule.next_run(now, self.store.last_daily_start()),
             "last_run": self.store.last_finished(),
             "schedule": {

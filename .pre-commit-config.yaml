@@ -1,0 +1,41 @@
+# Pre-commit hooks (Day 9). Install once per clone:
+#   pip install -r requirements/dev.txt && pre-commit install
+# They then run on every `git commit` (only on the staged files).
+# Run on everything:  pre-commit run --all-files
+#
+# ruff and black are "system" hooks: they use the versions pinned in
+# requirements/dev.txt, so the hook and `make lint` always agree.
+exclude: ^(data/|models/|mlruns/|mlartifacts/|reports/|dvc_plots/|backups/|docs/api/|.*\.dvc$|dvc\.lock$)
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-toml
+      - id: check-json
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        exclude: \.md$  # two trailing spaces are a Markdown line break
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1024]  # data and models go through DVC, not Git
+        exclude: \.ipynb$     # the executed EDA notebook carries its figures
+      - id: detect-private-key
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff (PEP 8, bugs, security lints)
+        entry: ruff check --force-exclude
+        language: system
+        types_or: [python, pyi]
+      - id: black
+        name: black (formatting)
+        entry: black --check --diff
+        language: system
+        types_or: [python, pyi]
+      - id: no-plaintext-secrets
+        name: never commit .env or key files
+        entry: "plaintext secret file: commit secrets/.env.enc instead (python -m finsight.security.secrets encrypt)"
+        language: fail
+        files: (^|/)(\.env|.*\.key|.*\.pem|secret\.key)$

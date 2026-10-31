@@ -3,7 +3,7 @@
 # Load .env (if present) so targets can use the same variables as compose.
 -include .env
 export
-.PHONY: help install lint format test test-int up down mongo-shell ingest-plan backfill incremental status build repro dag eda benchmark train plots sentiment portfolio feature-experiment mlflow-ui register serve api-dev rollback-lstm frontend web-dev scheduler run-now retrain-now monitoring dashboards drill-start drill-stop rules-test
+.PHONY: help install lint format test test-int up down mongo-shell ingest-plan backfill incremental status build repro dag eda benchmark train plots sentiment portfolio feature-experiment mlflow-ui register serve api-dev rollback-lstm frontend web-dev scheduler run-now retrain-now monitoring dashboards drill-start drill-stop rules-test e2e load-test test-report secrets-key secrets-encrypt secrets-decrypt secrets-check backup backup-models verify-backup pre-commit audit
 
 help:            ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*## "}{printf "  %-20s %s\n",$$1,$$2}'
@@ -119,3 +119,40 @@ drill-stop:      ## end the drift drill now
 rules-test:      ## check the Prometheus config and run the alert-rule unit tests (in the container)
 	docker compose exec prometheus promtool check config /etc/prometheus/prometheus.yml
 	docker compose exec -w /etc/prometheus/tests prometheus promtool test rules finsight_test.yml
+
+# ---- Day 9: testing, security, code quality ---------------------------------
+e2e:             ## end-to-end smoke tests against the running stack (docker compose up -d)
+	pytest tests/e2e -q -m e2e
+
+load-test:       ## 10 users for 60 s against the API -> reports/load_test.json
+	python scripts/load_test.py
+
+test-report:     ## run every suite -> docs/TEST_REPORT.md + docs/TEST_CASES.md
+	python scripts/test_report.py
+
+secrets-key:     ## create the encryption key (once; ~/.config/finsight/secret.key, never overwritten)
+	python -m finsight.security.secrets init-key
+
+secrets-encrypt: ## .env -> secrets/.env.enc (safe to commit; re-run after editing .env)
+	python -m finsight.security.secrets encrypt
+
+secrets-decrypt: ## secrets/.env.enc -> .env (new machine; refuses to overwrite)
+	python -m finsight.security.secrets decrypt
+
+secrets-check:   ## key location/permissions, .env permissions, git, encrypted copy in sync
+	python -m finsight.security.secrets check
+
+backup:          ## encrypted snapshot of MongoDB + reports + config -> backups/
+	python -m finsight.security.backup create
+
+backup-models:   ## same, plus models/ (larger)
+	python -m finsight.security.backup create --include-models
+
+verify-backup:   ## decrypt the newest snapshot and check every file against its manifest
+	python -m finsight.security.backup verify "$$(ls -t backups/*.tar.enc | head -1)"
+
+pre-commit:      ## run every pre-commit hook on all files
+	pre-commit run --all-files
+
+audit:           ## known vulnerabilities in the installed Python packages (needs internet)
+	pip-audit -r requirements/base.txt

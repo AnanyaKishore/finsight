@@ -44,3 +44,7 @@ class QuotaExceededError(ProviderError):
 
 class DataValidationError(FinSightError):
     """Data failed a quality check (used from Day 2 by the validate stage)."""
+
+
+class SecurityError(FinSightError):
+    """Encryption, decryption or key handling failed (wrong key, tampered file)."""

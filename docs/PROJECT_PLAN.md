@@ -143,7 +143,7 @@ metrics, stored forecasts, graceful degradation), `docs/LLD.md` + `docs/api/open
 - Grafana dashboards provisioned as code; alert rules (p95 latency, error rate, pipeline failure, drift > threshold, rolling MAPE > threshold).
 - Alertmanager → webhook → scheduler `/retrain` → `dvc repro register` → gate → promote or keep. Demo by injecting drift.
 
-### Day 9 — Thu 29 Oct · Testing, security, code quality
+### Day 9 — Thu 29 Oct · Testing, security, code quality ✅ (done 31 Oct)
 - Test plan with acceptance criteria (model metrics vs baselines, p95 < 300 ms for cached endpoints, error rate < 1 %, pipeline success), unit + integration + e2e (compose up → API → UI smoke), load test.
 - Security: Fernet-encrypted `secrets/.env.enc` (key outside Git), Mongo auth, localhost-only ports, non-root containers, encrypted exported snapshots / model artifacts at rest.
 - Pre-commit hooks; final coverage report → `docs/TEST_REPORT.md` (passed/failed counts).

@@ -521,6 +521,45 @@ dvc gc -w -f                                        # data no longer used by the
 Never run `docker volume prune` or `docker compose down -v`: the volumes hold
 MongoDB, MLflow, Prometheus and Grafana data.
 
+## Day 9 runbook — testing, security and code quality
+
+Plan and acceptance criteria: [`docs/TEST_PLAN.md`](docs/TEST_PLAN.md).
+Latest results: [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md) and every test case in
+[`docs/TEST_CASES.md`](docs/TEST_CASES.md), both written by `make test-report`.
+
+**1. Secrets: encrypt `.env` (once per machine for the key)**
+```bash
+make secrets-key        # ~/.config/finsight/secret.key, mode 600; copy it to a USB stick
+chmod 600 .env
+make secrets-encrypt    # .env -> secrets/.env.enc (commit this file, never .env)
+make secrets-check      # every line should say OK
+```
+After editing `.env`, run `make secrets-encrypt` again. On a new machine: copy
+the key to `~/.config/finsight/secret.key` (mode 600), then `make secrets-decrypt`.
+
+**2. Encrypted backups**
+```bash
+make backup             # MongoDB + reports + config -> backups/finsight-<time>.tar.enc
+make backup-models      # the same plus models/
+make verify-backup      # decrypt the newest one and check every file's SHA-256
+python -m finsight.security.backup restore backups/<file>.tar.enc --to /tmp/finsight-restore \
+    --mongo-db finsight_restore     # never the live database
+```
+
+**3. Pre-commit hooks**
+```bash
+pre-commit install      # once per clone: hooks then run on every git commit
+make pre-commit         # all hooks on all files
+```
+
+**4. Tests against the running stack**
+```bash
+docker compose up -d
+make e2e                # 16 end-to-end smoke tests (each skips if its service is down)
+make load-test          # 10 users for 60 s -> reports/load_test.json
+make test-report        # all suites + criteria -> docs/TEST_REPORT.md, docs/TEST_CASES.md
+```
+
 ---
 
 ## Ingestion CLI reference

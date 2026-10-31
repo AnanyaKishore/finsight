@@ -1,0 +1,107 @@
+{
+  "generated_at": "2026-10-31T15:22:31+00:00",
+  "base_url": "http://localhost:8000",
+  "users": 10,
+  "duration_s": 60,
+  "overall": {
+    "requests": 3750,
+    "errors": 0,
+    "error_rate": 0.0,
+    "p50_ms": 8.7,
+    "p95_ms": 16.9,
+    "p99_ms": 25.2,
+    "mean_ms": 10.6,
+    "max_ms": 573.9,
+    "throughput_rps": 62.3
+  },
+  "routes": {
+    "/api/portfolio": {
+      "requests": 311,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50_ms": 6.9,
+      "p95_ms": 11.4,
+      "p99_ms": 22.2,
+      "mean_ms": 8.6,
+      "max_ms": 435.1
+    },
+    "/api/prediction/{ticker}": {
+      "requests": 944,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50_ms": 11.0,
+      "p95_ms": 17.8,
+      "p99_ms": 22.7,
+      "mean_ms": 11.3,
+      "max_ms": 59.5
+    },
+    "/api/search": {
+      "requests": 586,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50_ms": 5.5,
+      "p95_ms": 9.5,
+      "p99_ms": 13.7,
+      "mean_ms": 6.4,
+      "max_ms": 390.7
+    },
+    "/api/sentiment/{ticker}": {
+      "requests": 595,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50_ms": 8.8,
+      "p95_ms": 15.7,
+      "p99_ms": 21.7,
+      "mean_ms": 9.9,
+      "max_ms": 410.6
+    },
+    "/api/stock/{ticker}": {
+      "requests": 992,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50_ms": 10.5,
+      "p95_ms": 20.1,
+      "p99_ms": 31.7,
+      "mean_ms": 13.6,
+      "max_ms": 573.9
+    },
+    "/api/stocks": {
+      "requests": 322,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50_ms": 5.4,
+      "p95_ms": 8.8,
+      "p99_ms": 50.1,
+      "mean_ms": 9.8,
+      "max_ms": 561.9
+    }
+  },
+  "model_endpoint": {
+    "requests": 10,
+    "errors": 0,
+    "error_rate": 0.0,
+    "p50_ms": 45.6,
+    "p95_ms": 88.6,
+    "p99_ms": 88.6,
+    "mean_ms": 51.3,
+    "max_ms": 88.6
+  },
+  "acceptance": {
+    "cached_p95_ms": {
+      "value": 16.9,
+      "target": "< 300",
+      "pass": true
+    },
+    "error_rate": {
+      "value": 0.0,
+      "target": "< 1%",
+      "pass": true
+    },
+    "model_p95_ms": {
+      "value": 88.6,
+      "target": "< 2000",
+      "pass": true
+    }
+  },
+  "error_examples": []
+}

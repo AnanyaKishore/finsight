@@ -12,3 +12,4 @@ pre-commit==4.7.0
 # Day 2: exploratory data analysis notebook
 jupyterlab==4.6.4
 matplotlib==3.11.2
+pip-audit==2.10.1      # make audit: known CVEs in installed packages (Day 9)
