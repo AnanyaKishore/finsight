@@ -13,6 +13,7 @@ export const BACKEND_URL = String(config.backendUrl || "http://localhost:8000").
 export const MLFLOW_URL = String(config.mlflowUrl || "http://localhost:5000").replace(/\/+$/, "");
 export const PROMETHEUS_URL = String(config.prometheusUrl || "http://localhost:9090").replace(/\/+$/, "");
 export const GRAFANA_URL = String(config.grafanaUrl || "http://localhost:3000").replace(/\/+$/, "");
+export const ALERTMANAGER_URL = String(config.alertmanagerUrl || "http://localhost:9093").replace(/\/+$/, "");
 
 const RETRYABLE_STATUS = new Set([502, 504]);
 
@@ -118,5 +119,6 @@ export const endpoints = {
   pipelineRun: (runId, o) => api(`/api/pipeline/runs/${encodeURIComponent(runId)}`, o),
   pipelineDag: (o) => api("/api/pipeline/dag", o),
   pipelineStats: (days, o) => api(`/api/pipeline/stats?days=${days}`, o),
+  monitoring: (o) => api("/api/monitoring", { retries: 0, ...o }),
   pipelineTrigger: (kind, reason, o) => api("/api/pipeline/trigger", { method: "POST", body: { kind, reason }, ...o }),
 };

@@ -1,0 +1,101 @@
+# Unit tests for the alert rules:
+#   promtool test rules monitoring/prometheus/tests/finsight_test.yml
+# (run inside the container:  docker compose exec prometheus promtool test rules /etc/prometheus/tests/finsight_test.yml)
+rule_files:
+  - ../rules/finsight.yml
+evaluation_interval: 30s
+
+tests:
+  # Drift that persists for 5 minutes fires the retrain alert, with the share as value.
+  - interval: 1m
+    input_series:
+      - series: 'finsight_drift_detected{feature="returns"}'
+        values: '0 0 1 1 1 1 1 1 1 1'
+      - series: 'finsight_drift_drifted_ticker_share'
+        values: '0.1 0.1 0.4 0.4 0.4 0.4 0.4 0.4 0.4 0.4'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: ReturnsDriftDetected
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: ReturnsDriftDetected
+        exp_alerts:
+          - exp_labels: {severity: warning, action: retrain}
+            exp_annotations:
+              summary: "Returns drift on 40% of tickers"
+              description: "Recent daily returns differ from the past year (PSI above monitoring.psi_threshold). The LSTM is retrained automatically; the promotion gate decides whether the new model is used."
+
+  # Live error worse than the rule -> retrain alert, value = ratio to naive.
+  - interval: 1m
+    input_series:
+      - series: 'finsight_forecast_degraded'
+        values: '1x10'
+      - series: 'finsight_forecast_error_ratio_to_naive'
+        values: '1.6x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: ForecastErrorDegraded
+        exp_alerts:
+          - exp_labels: {severity: warning, action: retrain}
+            exp_annotations:
+              summary: "Live forecast MAPE is 1.60x the naive forecast's"
+              description: "Stored forecasts compared with the prices that followed are worse than monitoring.error_ratio_to_naive times the naive error. A retrain is started automatically."
+
+  # 2% of requests failing for 5+ minutes -> critical; under 1% -> nothing.
+  - interval: 1m
+    input_series:
+      - series: 'finsight_http_requests_total{method="GET",route="/api/stock/{ticker}",status="200"}'
+        values: '0+98x15'
+      - series: 'finsight_http_requests_total{method="GET",route="/api/stock/{ticker}",status="503"}'
+        values: '0+2x15'
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: ApiHighErrorRate
+        exp_alerts:
+          - exp_labels: {severity: critical}
+            exp_annotations:
+              summary: "API error rate is 2% (target < 1%)"
+              description: "More than 1% of requests returned 5xx over the last 5 minutes."
+
+  - interval: 1m
+    input_series:
+      - series: 'finsight_http_requests_total{method="GET",route="/api/stock/{ticker}",status="200"}'
+        values: '0+999x15'
+      - series: 'finsight_http_requests_total{method="GET",route="/api/stock/{ticker}",status="503"}'
+        values: '0+1x15'
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: ApiHighErrorRate
+        exp_alerts: []
+
+  # A failed daily run, a model server down, stale prices.
+  - interval: 1m
+    input_series:
+      - series: 'finsight_pipeline_last_run_status{kind="daily"}'
+        values: '1 1 0 0 0 0'
+      - series: 'finsight_dependency_up{dependency="lstm-serve"}'
+        values: '1 0 0 0 0 0 0 0'
+      - series: 'finsight_data_lag_trading_days{ticker="AAPL"}'
+        values: '3x40'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: PipelineRunFailed
+        exp_alerts:
+          - exp_labels: {severity: critical, kind: daily}
+            exp_annotations:
+              summary: "The last daily pipeline run failed"
+              description: "Open the Pipeline Console (http://localhost:8080/#/pipeline) for the failed step and its log."
+      - eval_time: 7m
+        alertname: ModelServerDown
+        exp_alerts:
+          - exp_labels: {severity: critical, dependency: lstm-serve}
+            exp_annotations:
+              summary: "lstm-serve is down; the API is serving fallbacks"
+              description: "The backend's health check has failed for 5 minutes. Forecasts fall back to the last stored copy; /api/sentiment/analyze answers 503."
+      - eval_time: 35m
+        alertname: DataStale
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: "Prices are 3 trading days behind"
+              description: "Ingestion is not keeping up (API quota, provider outage or the scheduler is stopped)."

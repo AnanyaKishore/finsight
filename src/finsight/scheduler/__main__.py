@@ -44,6 +44,7 @@ def main(argv: list[str] | None = None) -> int:
         tickers=[t.symbol for t in settings.tickers],
         backend_url=os.getenv("BACKEND_INTERNAL_URL", "http://localhost:8000"),
         lstm_url=os.getenv("LSTM_SERVE_URL", "http://localhost:5001"),
+        monitoring=settings.section("monitoring"),
     )
     service.recover()
     service.refresh_dag_async()
@@ -51,6 +52,7 @@ def main(argv: list[str] | None = None) -> int:
     if not args.no_loop:
         threading.Thread(target=service.loop, args=(stop,), name="loop", daemon=True).start()
         log.info("scheduler loop started", extra=service.status()["schedule"])
+    threading.Thread(target=service.monitor_loop, args=(stop,), name="monitor", daemon=True).start()
     token = usable_secret(os.getenv("SCHEDULER_TOKEN"))
     if not token:
         log.warning(

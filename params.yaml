@@ -211,3 +211,37 @@ scheduler:
     retrain: 7200
     forecasts: 900
     version: 900
+
+# --------------------------------------------------------------------------- #
+# Monitoring (Day 8): drift and live model performance, computed by the
+# scheduler every `interval_s` and after each run, exported to Prometheus.
+# Operational settings, not DVC params.
+# --------------------------------------------------------------------------- #
+monitoring:
+  interval_s: 120
+  # Returns drift: the last `current_days` daily log returns of each ticker vs
+  # the `reference_days` returns before them (about one trading year).
+  # 60 days and 5 bins keep PSI's sampling noise well under the threshold
+  # (simulated: 95th percentile 0.19 with no drift; a doubling of volatility
+  # gives a median of 0.34). 20 days and 10 bins flagged every stock.
+  current_days: 60
+  reference_days: 250
+  psi_bins: 5
+  # PSI rule of thumb: < 0.1 stable, 0.1-0.25 moderate, > 0.25 significant.
+  psi_threshold: 0.25
+  # Drift is "detected" (retrain alert) when at least this share of tickers drifts.
+  drift_ticker_share: 0.3
+  # News sentiment: article scores of the last `sentiment_current_days` vs the
+  # `sentiment_reference_days` before them (all tickers pooled).
+  sentiment_current_days: 14
+  sentiment_reference_days: 90
+  sentiment_psi_threshold: 0.25
+  # Live forecast error: stored forecasts whose target days have now traded.
+  error_window_days: 30          # forecasts made in the last N calendar days
+  min_error_points: 20           # fewer realised points -> no verdict yet
+  # Retrain when live MAPE is above both this ratio to the naive forecast's
+  # MAPE on the same points and the absolute floor (percent).
+  error_ratio_to_naive: 1.25
+  error_mape_floor: 3.0
+  # The /retrain webhook is ignored if a retrain started less than this ago.
+  retrain_cooldown_h: 24

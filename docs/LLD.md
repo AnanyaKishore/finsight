@@ -132,14 +132,26 @@ Status: `200`, `404 no_portfolio`.
 
 Run status: `running`, `success`, `partial` (finished, a non-critical step failed or was partial), `failed` (a critical step failed), `interrupted` (the scheduler stopped mid-run; closed at its next start). Step status adds `pending` and `skipped`.
 
+### 2.8b Monitoring (`GET /api/monitoring`, Day 8)
+`{report, alerts: [{name, severity, action, summary, starts_at}], alertmanager_reachable, detail}`.
+`report` is the newest `monitoring_reports` document: `generated_at`, `drill`,
+`returns {per_ticker: {T: {psi, ks, drifted, current_volatility, reference_volatility, n_reference} | {status: insufficient_data}}, drifted_share, max_psi, detected, threshold}`,
+`sentiment {psi, ks, mean_current, mean_reference, n_current, n_reference, detected}`,
+`forecast {points, model_versions, mape, naive_mape, ratio_to_naive, per_ticker_mape, detected}`,
+`freshness {expected_session, lag_trading_days, max_lag}`, `quality {status, errors, warnings, failed_checks}`,
+`models {lstm, sentiment}`; a section that failed is `{status: error, error}`.
+Alerts come from Alertmanager (`active, unsilenced, uninhibited`, sorted critical → info).
+`404 no_monitoring` only when there is no report **and** Alertmanager is down.
+
 ### 2.9 Scheduler API (internal, `127.0.0.1:8001`)
 | Endpoint | Behaviour |
 |---|---|
 | `GET /health` | `{status: ok, busy}` (compose healthcheck) |
 | `GET /status` | busy, the running run document, next daily run, last finished run, schedule |
 | `POST /run` `{kind, reason, trigger: console\|api}` | token required; `202 {run_id}`, `409 busy`, `401`, `503 trigger_disabled` |
-| `POST /retrain` | Alertmanager webhook body; token as `Authorization: Bearer`; reason = alert names; `status: resolved` → `200 ignored` |
-| `GET /metrics` | `finsight_pipeline_runs_total{kind,status}`, `_last_run_status{kind}` (1 / 0.5 / 0), `_last_run_timestamp_seconds{kind}`, `_last_run_duration_seconds{kind}`, `_step_duration_seconds{step}`, `_step_failures_total{step}`, `finsight_pipeline_running`, `finsight_pipeline_throughput{measure}` |
+| `POST /retrain` | Alertmanager webhook body; token as `Authorization: Bearer`; reason = alert names; `status: resolved` → `200 ignored`; within `monitoring.retrain_cooldown_h` (24 h) of the last retrain → `200 {ignored: cooldown, retry_after_s}` |
+| `POST /monitor` | token required; recompute the monitoring report now → `{summary, report}`; `503 monitoring_disabled` |
+| `GET /metrics` | `finsight_pipeline_runs_total{kind,status}`, `_last_run_status{kind}` (1 / 0.5 / 0), `_last_run_timestamp_seconds{kind}`, `_last_run_duration_seconds{kind}`, `_step_duration_seconds{step}`, `_step_failures_total{step}`, `finsight_pipeline_running`, `finsight_pipeline_throughput{measure}`, `finsight_retrains_triggered_total{trigger}`, `finsight_retrains_skipped_total`, and the monitoring gauges (§6.2) |
 
 Run plans (`finsight.scheduler.plan`; critical steps stop the run):
 
@@ -151,6 +163,7 @@ Run plans (`finsight.scheduler.plan`; critical steps stop the run):
 | optimize_portfolio | ✓ | | `dvc repro --single-item optimize_portfolio` | |
 | retrain | | ✓ | `dvc repro` | ✓ |
 | forecasts | ✓ | ✓ | `GET backend /api/prediction/{t}` for the 10 tickers (waits for `lstm-serve` to reload after a promotion) | |
+| monitor | ✓ | ✓ | in-process: build, store and export the monitoring report (`partial` if a section errored) | |
 | version | ✓ | ✓ | `dvc push`; `git commit -- dvc.lock reports` (local only) | |
 
 Timeouts per step: `params.yaml` → `scheduler.timeouts_s`.
@@ -203,6 +216,8 @@ connection errors, 5xx and 429; 4xx is never retried.
 | `pipeline_executions` | `run_id` | scheduler (one document per run, steps updated live) | Pipeline Console |
 | `pipeline_dag` | `_id: "dvc"` | scheduler (after each run and at start-up) | Pipeline Console |
 | `api_usage` | `(provider, period)` | ingestion quota ledger | ingestion |
+| `monitoring_reports` | TTL 30 days on `generated_at` | scheduler (every `monitoring.interval_s` and each run) | API `/api/monitoring` |
+| `monitoring_drill` | `_id: "drill"` | `python -m finsight.monitoring.drill` | monitor (while `until` is in the future) |
 
 `forecasts` document: `{ticker, as_of, model_name, model_version, run_id, forecast: [{date, price}] (14), last_price, generated_at}`.
 
@@ -245,6 +260,53 @@ and the matching serving container must be restarted.
 | `finsight_model_request_duration_seconds` | histogram | `model` |
 | `finsight_forecasts_served_total` | counter | `source` (`model`/`cache`/`stale`) |
 | `finsight_dependency_up` | gauge | `dependency` |
+
+`/metrics` also refreshes `finsight_dependency_up` when it is scraped (at most every 10 s), so a model server going down shows within one scrape even without traffic.
+
+### 6.1 Prometheus stack (Day 8)
+| Service | Port (localhost only) | Scrapes / does |
+|---|---|---|
+| Prometheus v3.5.0 | 9090 | every 15 s: backend, scheduler (30 s), node-exporter, cAdvisor (30 s, filtered to `container_*` used by the dashboards), mongodb-exporter, nginx-exporter, Alertmanager, Grafana (60 s), itself; rules every 30 s; 15 d / 1 GB retention |
+| Alertmanager v0.28.1 | 9093 | `action="retrain"` → `POST scheduler:8001/retrain` (bearer token from a file written at start, group_wait 1 m, repeat 24 h, no resolved); others to the UI only; inhibition: backend down mutes API alerts, scheduler down mutes monitoring alerts |
+| Grafana 12.1.1 | 3000 | datasource and 5 dashboards provisioned from `monitoring/grafana/` (generated by `scripts/build_dashboards.py`); refresh 30 s |
+| node-exporter, cAdvisor, mongodb-exporter, nginx-exporter | internal | host, every container (incl. mlflow and the model servers), MongoDB, the frontend's nginx (`stub_status` on internal port 8081) |
+
+### 6.2 Monitoring gauges (scheduler `/metrics`)
+| Metric | Labels | Meaning |
+|---|---|---|
+| `finsight_drift_psi`, `finsight_drift_ks` | `feature` (`returns`/`sentiment`), `ticker` | latest PSI / KS |
+| `finsight_drift_drifted_ticker_share` | | share of stocks with returns PSI > threshold |
+| `finsight_drift_detected` | `feature` | 1 when the drift rule holds |
+| `finsight_sentiment_mean_score` | `window` (`current`/`reference`) | mean article score |
+| `finsight_forecast_live_mape_percent` | `model` (`lstm`/`naive`) | live MAPE on realised points |
+| `finsight_forecast_live_mape_by_ticker_percent` | `ticker` | |
+| `finsight_forecast_realised_points`, `finsight_forecast_error_ratio_to_naive`, `finsight_forecast_degraded` | | |
+| `finsight_data_lag_trading_days` | `ticker` | trading days behind the latest session |
+| `finsight_data_quality_failed_checks` | `severity` | from `reports/data_quality.json` |
+| `finsight_model_production_version` | `model` | from `reports/promotion.json` |
+| `finsight_drift_drill_active`, `finsight_monitoring_last_update_timestamp_seconds` | | |
+
+### 6.3 Alert rules (`monitoring/prometheus/rules/finsight.yml`)
+| Alert | Condition | For | Severity |
+|---|---|---|---|
+| TargetDown | `up == 0` | 2m | critical |
+| ModelServerDown / DependencyDown | `finsight_dependency_up == 0` (model servers / mongodb, mlflow) | 5m | critical / warning |
+| ApiHighErrorRate | 5xx ratio (5 m) > 1 % | 5m | critical |
+| ApiHighLatency | p95 > 300 ms (excluding prediction and analyze) | 5m | warning |
+| ApiModelEndpointSlow | p95 of prediction / analyze > 2 s | 10m | warning |
+| ForecastsServedStale | a stale forecast was served in 30 m | – | warning |
+| PipelineRunFailed / PipelineRunPartial | last run status 0 / 0.5 | 1m | critical / warning |
+| PipelineNotRunning | no daily run for 80 h | 10m | warning |
+| DataStale | max lag > 2 trading days | 30m | warning |
+| DataQualityFailed | failed error-severity checks > 0 | 1m | critical |
+| MonitoringStale | report older than 15 min | 5m | warning |
+| **ReturnsDriftDetected** | `finsight_drift_detected{feature="returns"} == 1` | 5m | warning, `action=retrain` |
+| **ForecastErrorDegraded** | `finsight_forecast_degraded == 1` | 5m | warning, `action=retrain` |
+| SentimentShift | sentiment PSI > 0.25 | 15m | info |
+| DriftDrillActive | drill running | – | info |
+| HostMemoryLow / HostDiskLow | < 10 % available | 5m / 10m | warning |
+| ContainerNearMemoryLimit | working set > 90 % of `mem_limit` | 5m | warning |
+| ContainerOomKilled | OOM event in 10 m | – | critical |
 
 ## 7. Graceful degradation matrix
 

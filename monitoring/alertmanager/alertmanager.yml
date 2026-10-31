@@ -1,0 +1,46 @@
+# FinSight Alertmanager (Day 8).
+#
+# Alerts labelled action="retrain" (returns drift, degraded live forecast
+# error) go to the scheduler's /retrain webhook, which starts the retrain
+# pipeline (dvc repro -> evaluation -> promotion gate). Everything else is
+# kept in Alertmanager (UI at http://localhost:9093, shown in the Pipeline
+# Console and Grafana); no e-mail/Slack, since the project uses no external
+# services.
+#
+# The scheduler token is read from a file the container writes from
+# SCHEDULER_TOKEN at start-up (see docker-compose.yml), so it is not in Git.
+route:
+  receiver: default
+  group_by: [alertname]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  routes:
+    - receiver: scheduler-retrain
+      matchers: ['action="retrain"']
+      group_by: [action]          # drift + error alerts together -> one retrain
+      group_wait: 1m
+      group_interval: 10m
+      # The scheduler also enforces monitoring.retrain_cooldown_h (24 h), so a
+      # drift that persists cannot retrain in a loop.
+      repeat_interval: 24h
+      continue: false
+
+inhibit_rules:
+  # While a scrape target is down, its downstream symptoms are noise.
+  - source_matchers: ['alertname="TargetDown"', 'job="backend"']
+    target_matchers: ['alertname=~"ApiHighErrorRate|ApiHighLatency|ModelServerDown|DependencyDown"']
+  - source_matchers: ['alertname="TargetDown"', 'job="scheduler"']
+    target_matchers: ['alertname=~"MonitoringStale|PipelineNotRunning"']
+
+receivers:
+  - name: default
+  - name: scheduler-retrain
+    webhook_configs:
+      - url: http://scheduler:8001/retrain
+        send_resolved: false
+        max_alerts: 10
+        http_config:
+          authorization:
+            type: Bearer
+            credentials_file: /tmp/scheduler_token

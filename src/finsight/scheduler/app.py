@@ -5,6 +5,7 @@
 ``GET  /status``        busy?, the run in progress, next daily run, last run
 ``POST /run``           start a run: ``{"kind": "daily"|"retrain", "reason"}``
 ``POST /retrain``       start a retrain; accepts an Alertmanager webhook body
+``POST /monitor``       recompute the drift / live-error report now (Day 8)
 ``GET  /metrics``       Prometheus metrics (pipeline health, Day 8)
 =====================  ======================================================
 
@@ -13,7 +14,9 @@
 Alertmanager sends). Without a configured token, starting runs over HTTP is
 disabled. Answers: ``202`` started, ``409`` a run is in progress, ``401`` bad
 token, ``422`` bad request. Alertmanager also posts when an alert *resolves*;
-``/retrain`` answers those with ``200 ignored`` and starts nothing.
+``/retrain`` answers those with ``200 ignored`` and starts nothing, and it
+also ignores (``200``) alerts that arrive within ``monitoring.retrain_cooldown_h``
+of the last retrain, so a drift that persists cannot retrain in a loop.
 """
 
 from __future__ import annotations
@@ -27,6 +30,7 @@ from fastapi.responses import JSONResponse, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from pydantic import BaseModel, Field
 
+from finsight.monitoring.monitor import summarise
 from finsight.scheduler.service import Busy, SchedulerService
 
 
@@ -105,7 +109,25 @@ def create_app(service: SchedulerService, token: str | None) -> FastAPI:
             if names
             else str(body.get("reason", "") if isinstance(body, dict) else "")
         )
+        if left := service.retrain_cooldown_left():
+            service.metrics.retrains_skipped.inc()
+            return JSONResponse(
+                {
+                    "ignored": "cooldown",
+                    "retry_after_s": int(left.total_seconds()),
+                    "reason": reason,
+                }
+            )
         return start("retrain", "webhook", reason[:200])
+
+    @app.post("/monitor")
+    def monitor(request: Request) -> Any:
+        if denied := authorised(request):
+            return denied
+        report = service.refresh_monitoring()
+        if report is None:
+            return _error(503, "monitoring_disabled", "no monitoring section in params.yaml")
+        return jsonable_encoder({"summary": summarise(report), "report": report})
 
     @app.get("/metrics", include_in_schema=False)
     def metrics() -> Response:

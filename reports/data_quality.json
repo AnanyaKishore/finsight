@@ -310,7 +310,7 @@
     {
       "details": null,
       "name": "news.summary_present_fraction",
-      "observed": 0.9901,
+      "observed": 0.9902,
       "severity": "info",
       "success": true
     }
@@ -325,7 +325,7 @@
         "2026-06-10"
       ],
       "missing_trading_days": 2,
-      "news_articles": 1362,
+      "news_articles": 1365,
       "news_thin_weeks": 0,
       "news_weeks": 28,
       "outlier_days": 1,
@@ -349,7 +349,7 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1407,
+      "news_articles": 1434,
       "news_thin_weeks": 0,
       "news_weeks": 27,
       "outlier_days": 1,
@@ -417,7 +417,7 @@
         "2026-06-10"
       ],
       "missing_trading_days": 2,
-      "news_articles": 1425,
+      "news_articles": 1439,
       "news_thin_weeks": 0,
       "news_weeks": 27,
       "outlier_days": 1,
@@ -510,7 +510,7 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1218,
+      "news_articles": 1220,
       "news_thin_weeks": 0,
       "news_weeks": 28,
       "outlier_days": 1,

@@ -137,7 +137,7 @@ metrics, stored forecasts, graceful degradation), `docs/LLD.md` + `docs/api/open
 - Scheduler service: weekday job (ingest → `dvc repro` daily targets → score news → refresh forecasts → portfolio), `/retrain` webhook, per-stage run records, auto-commit of `dvc.lock` + `dvc push`.
 - Pipeline Console page: DVC DAG diagram, run history (success/failed/partial), error drill-down by `run_id`, throughput and duration charts, deep links to MLflow, Grafana, Prometheus.
 
-### Day 8 — Wed 28 Oct · Monitoring, drift and automated retraining
+### Day 8 — Wed 28 Oct · Monitoring, drift and automated retraining ✅
 **Role:** closes the AIOps loop.
 - Prometheus scrape config; exporters (node, MongoDB); custom metrics: pipeline run status/duration/throughput, data-quality failures, drift scores (PSI/KS on returns, sentiment-score shift), rolling forecast error vs realised prices.
 - Grafana dashboards provisioned as code; alert rules (p95 latency, error rate, pipeline failure, drift > threshold, rolling MAPE > threshold).

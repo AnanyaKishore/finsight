@@ -14,7 +14,8 @@ LABEL org.opencontainers.image.title="finsight-frontend" \
 ENV BACKEND_URL=http://localhost:8000 \
     MLFLOW_UI_URL=http://localhost:5000 \
     PROMETHEUS_UI_URL=http://localhost:9090 \
-    GRAFANA_UI_URL=http://localhost:3000
+    GRAFANA_UI_URL=http://localhost:3000 \
+    ALERTMANAGER_UI_URL=http://localhost:9093
 
 # Two worker processes are plenty for one user; the default ("auto") starts
 # one per CPU core (12 on the target laptop) for no benefit.

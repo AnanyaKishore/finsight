@@ -105,6 +105,12 @@
             step had a problem (for example one stock's news could not be fetched).</li>
           <li><strong>Run duration</strong> and <strong>Throughput</strong> show whether runs are getting slower over time.
             Every chart has a table view underneath.</li>
+          <li><strong>Monitoring:</strong> alerts that are firing now, and whether the data still looks like the data the
+            model learned from. For each stock, <em>PSI</em> compares the last 60 trading days (about three months) of daily price moves with the year
+            before; above 0.25 counts as a real change. The card also shows how far off the stored forecasts were once
+            the actual prices came in, next to a "price stays the same" forecast. If many stocks drift, or the model
+            becomes clearly worse than that simple forecast, FinSight starts a retrain by itself (at most once a day).
+            The Grafana link opens the same numbers as charts over time.</li>
         </ul>
       </section>
 

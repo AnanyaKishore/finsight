@@ -79,6 +79,7 @@ def test_backend_url_is_validated_before_nginx_starts(url, ok):
         "MLFLOW_UI_URL": "http://localhost:5000",
         "PROMETHEUS_UI_URL": "http://localhost:9090",
         "GRAFANA_UI_URL": "http://localhost:3000",
+        "ALERTMANAGER_UI_URL": "http://localhost:9093",
         "PATH": "/usr/bin:/bin",
     }
     result = subprocess.run(

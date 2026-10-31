@@ -54,23 +54,23 @@ stages:
     outs:
     - path: data/raw/news.parquet
       hash: md5
-      md5: b7d9b0886467b973779bd68d3451b831
-      size: 5646312
+      md5: 4677861f4536437a9985c9acfa311b5a
+      size: 5662080
     - path: data/raw/prices.parquet
       hash: md5
       md5: b0fb86452f1d4e6abdd29fd7b98329f6
       size: 103202
     - path: reports/export_manifest.json
       hash: md5
-      md5: 54b20b22070cff13c3e1580013d982b5
+      md5: ece10882766f9e4b81acde7b15bceb20
       size: 563
   validate:
     cmd: python -m finsight.data.validate
     deps:
     - path: data/raw/news.parquet
       hash: md5
-      md5: b7d9b0886467b973779bd68d3451b831
-      size: 5646312
+      md5: 4677861f4536437a9985c9acfa311b5a
+      size: 5662080
     - path: data/raw/prices.parquet
       hash: md5
       md5: b0fb86452f1d4e6abdd29fd7b98329f6
@@ -97,7 +97,7 @@ stages:
     outs:
     - path: reports/data_quality.json
       hash: md5
-      md5: bf630f878e353812d4af733d0652ae43
+      md5: 527dfac20ec440069dc5f87a15db856f
       size: 11428
   process:
     cmd: python -m finsight.etl.process

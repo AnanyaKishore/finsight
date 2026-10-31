@@ -4,7 +4,8 @@ Two kinds of run:
 
 * **daily** (scheduled every weekday morning, or "Run now" in the console)::
 
-      ingest -> data -> score_sentiment -> optimize_portfolio -> forecasts -> version
+      ingest -> data -> score_sentiment -> optimize_portfolio -> forecasts
+             -> monitor -> version
 
   ``data`` is ``dvc repro process`` (unit tests -> export -> validate -> Spark
   ETL). Sentiment and portfolio use ``dvc repro --single-item``, so the daily
@@ -15,7 +16,10 @@ Two kinds of run:
   alerts call)::
 
       ingest -> retrain (full dvc repro: train, evaluate, register gate, ...)
-             -> forecasts -> version
+             -> forecasts -> monitor -> version
+
+``monitor`` (Day 8) recomputes drift and live forecast error right away, so
+Grafana and the alerts see the new data without waiting for the next refresh.
 
 A *critical* step stops the run when it fails (later steps would work on bad
 or missing data). A non-critical failure is recorded and the run continues;
@@ -29,7 +33,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 Kind = Literal["daily", "retrain"]
-StepType = Literal["command", "forecasts", "version"]
+StepType = Literal["command", "forecasts", "monitor", "version"]
 
 PY = sys.executable
 
@@ -76,11 +80,12 @@ RETRAIN = Step(
     critical=True,
 )
 FORECASTS = Step("forecasts", "Store today's forecasts", type="forecasts")
+MONITOR = Step("monitor", "Check drift and live forecast error", type="monitor")
 VERSION = Step("version", "dvc push + local commit of dvc.lock", type="version")
 
 PLANS: dict[str, tuple[Step, ...]] = {
-    "daily": (INGEST, DATA, SCORE, PORTFOLIO, FORECASTS, VERSION),
-    "retrain": (INGEST, RETRAIN, FORECASTS, VERSION),
+    "daily": (INGEST, DATA, SCORE, PORTFOLIO, FORECASTS, MONITOR, VERSION),
+    "retrain": (INGEST, RETRAIN, FORECASTS, MONITOR, VERSION),
 }
 
 

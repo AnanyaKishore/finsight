@@ -83,7 +83,7 @@ def test_daily_plan_never_retrains_and_retrain_runs_everything():
     assert ("dvc", "repro") not in daily
     assert all("--single-item" in argv for argv in daily if "score_sentiment" in argv)
     assert ("dvc", "repro") in [s.argv for s in plan_for("retrain")]
-    assert [s.name for s in PLANS["daily"]][-2:] == ["forecasts", "version"]
+    assert [s.name for s in PLANS["daily"]][-3:] == ["forecasts", "monitor", "version"]
     with pytest.raises(ValueError, match="unknown run kind"):
         plan_for("weekly")
 
@@ -184,7 +184,7 @@ class FakeRunner:
 
 @pytest.fixture
 def make_service(db, tmp_path):
-    def build(runner=None, http=None, now=TUESDAY_7AM, tickers=("AAPL", "MSFT")):
+    def build(runner=None, http=None, now=TUESDAY_7AM, tickers=("AAPL", "MSFT"), **extra):
         clock = {"now": now}
         service = SchedulerService(
             root=tmp_path,
@@ -204,6 +204,7 @@ def make_service(db, tmp_path):
             },
             http=http or FakeHttp(),
             sleep=lambda s: None,
+            **extra,
         )
         return service, clock
 
@@ -216,7 +217,8 @@ def test_daily_run_records_every_step_and_the_dag(make_service, db):
     run_id = service.start("daily", "console", "test", wait=True)
     doc = db[PIPELINE_EXECUTIONS].find_one({"run_id": run_id})
     assert doc["status"] == "success" and doc["current_step"] is None
-    assert [s["status"] for s in doc["steps"]] == ["success"] * 6
+    # monitor is "skipped" here: this service has no monitoring section configured
+    assert [s["status"] for s in doc["steps"]] == ["success"] * 5 + ["skipped", "success"]
     assert {rid for _, rid in runner.calls} == {run_id}  # stage records can be grouped
     assert doc["steps"][4]["metrics"]["fresh"] == 2
     assert db.pipeline_dag.find_one({"_id": "dvc"})["edges"] == [["a", "b"]]

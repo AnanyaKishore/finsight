@@ -45,6 +45,8 @@ convention = "google"
 "scripts/**" = ["D", "S603", "S607", "E402"]
 # Notebook cells are embedded as strings; their line length follows notebook style.
 "scripts/build_eda_notebook.py" = ["D", "E501"]
+"scripts/build_dashboards.py" = ["E501"]  # long PromQL strings read better unbroken
+"tests/unit/test_monitoring.py" = ["F811"]  # reuses the scheduler tests' make_service fixture
 # `from pyspark.sql import functions as F` is the universal PySpark convention.
 "src/finsight/etl/**" = ["N812"]
 

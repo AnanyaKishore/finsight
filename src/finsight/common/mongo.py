@@ -41,6 +41,10 @@ FORECASTS = "forecasts"
 # Day 7: scheduler runs (one document per daily / retrain run) and the DVC DAG.
 PIPELINE_EXECUTIONS = "pipeline_executions"
 PIPELINE_DAG = "pipeline_dag"  # single document, refreshed after every run
+# Day 8: monitoring reports (drift, live error; kept 30 days) and the drift drill switch.
+MONITORING_REPORTS = "monitoring_reports"
+MONITORING_DRILL = "monitoring_drill"
+MONITORING_RETENTION_S = 30 * 24 * 3600
 
 
 def get_client(settings: Settings, timeout_ms: int = 5000) -> MongoClient:
@@ -85,4 +89,7 @@ def ensure_indexes(db: Database) -> None:
     db[PIPELINE_EXECUTIONS].create_index([("run_id", ASCENDING)], unique=True)
     db[PIPELINE_EXECUTIONS].create_index([("started_at", DESCENDING)])
     db[PIPELINE_EXECUTIONS].create_index([("kind", ASCENDING), ("started_at", DESCENDING)])
+    db[MONITORING_REPORTS].create_index(
+        [("generated_at", DESCENDING)], expireAfterSeconds=MONITORING_RETENTION_S
+    )
     log.debug("mongo indexes ensured", extra={"db": db.name})

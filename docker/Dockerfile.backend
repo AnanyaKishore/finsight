@@ -5,7 +5,7 @@
 
 # ---------- Stage 1: builder ----------
 FROM python:3.11-slim-bookworm AS builder
-ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_DEFAULT_TIMEOUT=120 PIP_RETRIES=10
 WORKDIR /build
 COPY requirements/base.txt requirements/api.txt requirements/
 RUN python -m venv /opt/venv \

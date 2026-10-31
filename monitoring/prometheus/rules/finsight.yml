@@ -1,0 +1,200 @@
+# FinSight alert rules (Day 8).
+#
+# Labels used by Alertmanager routing:
+#   severity: critical | warning | info
+#   action:   retrain  -> routed to the scheduler's /retrain webhook
+# Thresholds for drift and live forecast error live in params.yaml
+# (monitoring.*); the scheduler exports the decision as *_detected / *_degraded
+# gauges, so these rules only check them.
+groups:
+  # ------------------------------------------------------------ availability
+  - name: finsight-availability
+    rules:
+      - alert: TargetDown
+        expr: up == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "{{ $labels.job }} is not answering Prometheus scrapes"
+          description: "Scrape target {{ $labels.instance }} ({{ $labels.job }}) has been down for 2 minutes. Check `docker compose ps`."
+
+      - alert: ModelServerDown
+        expr: finsight_dependency_up{dependency=~"lstm-serve|sentiment-serve"} == 0
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "{{ $labels.dependency }} is down; the API is serving fallbacks"
+          description: "The backend's health check has failed for 5 minutes. Forecasts fall back to the last stored copy; /api/sentiment/analyze answers 503."
+
+      - alert: DependencyDown
+        expr: finsight_dependency_up{dependency=~"mongodb|mlflow-registry"} == 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Backend cannot reach {{ $labels.dependency }}"
+          description: "The API reports degraded status."
+
+  # ------------------------------------------------------------------- API
+  - name: finsight-api
+    rules:
+      - record: finsight:http_error_ratio:rate5m
+        expr: |
+          (sum(rate(finsight_http_requests_total{status=~"5.."}[5m])) or vector(0))
+            / sum(rate(finsight_http_requests_total[5m]))
+
+      - record: finsight:http_latency_p95:rate5m
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, route) (rate(finsight_http_request_duration_seconds_bucket[5m])))
+
+      - alert: ApiHighErrorRate
+        expr: finsight:http_error_ratio:rate5m > 0.01
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "API error rate is {{ $value | humanizePercentage }} (target < 1%)"
+          description: "More than 1% of requests returned 5xx over the last 5 minutes."
+
+      - alert: ApiHighLatency
+        # Cached / database endpoints: acceptance target p95 < 300 ms.
+        expr: finsight:http_latency_p95:rate5m{route!~".*(prediction|analyze).*"} > 0.3
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "p95 latency of {{ $labels.route }} is {{ $value | humanizeDuration }} (target < 300 ms)"
+
+      - alert: ApiModelEndpointSlow
+        # Endpoints that call a model server get a looser bound.
+        expr: finsight:http_latency_p95:rate5m{route=~".*(prediction|analyze).*"} > 2
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "p95 latency of {{ $labels.route }} is {{ $value | humanizeDuration }} (target < 2 s)"
+
+      - alert: ForecastsServedStale
+        expr: sum(increase(finsight_forecasts_served_total{source="stale"}[30m])) > 0
+        for: 0m
+        labels: {severity: warning}
+        annotations:
+          summary: "Forecasts are being served from the stale fallback"
+          description: "lstm-serve could not answer and older stored forecasts were returned."
+
+  # -------------------------------------------------------------- pipeline
+  - name: finsight-pipeline
+    rules:
+      - alert: PipelineRunFailed
+        expr: finsight_pipeline_last_run_status == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "The last {{ $labels.kind }} pipeline run failed"
+          description: "Open the Pipeline Console (http://localhost:8080/#/pipeline) for the failed step and its log."
+
+      - alert: PipelineRunPartial
+        expr: finsight_pipeline_last_run_status == 0.5
+        for: 1m
+        labels: {severity: warning}
+        annotations:
+          summary: "The last {{ $labels.kind }} pipeline run only partly succeeded"
+
+      - alert: PipelineNotRunning
+        # Runs Tue-Sat 06:30 IST; the longest normal gap (Sat -> Tue) is 72 h.
+        expr: time() - finsight_pipeline_last_run_timestamp_seconds{kind="daily"} > 80 * 3600
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "No daily pipeline run has finished for {{ $value | humanizeDuration }}"
+
+      - alert: DataStale
+        expr: max(finsight_data_lag_trading_days) > 2
+        for: 30m
+        labels: {severity: warning}
+        annotations:
+          summary: "Prices are {{ $value }} trading days behind"
+          description: "Ingestion is not keeping up (API quota, provider outage or the scheduler is stopped)."
+
+      - alert: DataQualityFailed
+        expr: finsight_data_quality_failed_checks{severity="error"} > 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "{{ $value }} blocking data-quality check(s) failed in the last validation"
+
+      - alert: MonitoringStale
+        expr: time() - finsight_monitoring_last_update_timestamp_seconds > 900
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "The drift / live-error report has not been refreshed for 15 minutes"
+
+  # ----------------------------------------------------- drift and models
+  - name: finsight-models
+    rules:
+      - alert: ReturnsDriftDetected
+        # Value = share of tickers drifted (only while drift is "detected").
+        expr: finsight_drift_drifted_ticker_share and on() finsight_drift_detected{feature="returns"} == 1
+        for: 5m
+        labels: {severity: warning, action: retrain}
+        annotations:
+          summary: "Returns drift on {{ $value | humanizePercentage }} of tickers"
+          description: "Recent daily returns differ from the past year (PSI above monitoring.psi_threshold). The LSTM is retrained automatically; the promotion gate decides whether the new model is used."
+
+      - alert: ForecastErrorDegraded
+        expr: finsight_forecast_error_ratio_to_naive and on() finsight_forecast_degraded == 1
+        for: 5m
+        labels: {severity: warning, action: retrain}
+        annotations:
+          summary: "Live forecast MAPE is {{ $value | printf \"%.2f\" }}x the naive forecast's"
+          description: "Stored forecasts compared with the prices that followed are worse than monitoring.error_ratio_to_naive times the naive error. A retrain is started automatically."
+
+      - alert: SentimentShift
+        expr: finsight_drift_psi{feature="sentiment"} and on() finsight_drift_detected{feature="sentiment"} == 1
+        for: 15m
+        labels: {severity: info}
+        annotations:
+          summary: "News sentiment distribution shifted (PSI {{ $value | printf \"%.2f\" }})"
+          description: "Informational: the sentiment model is pretrained, so this does not retrain anything. Check the news feed."
+
+      - alert: DriftDrillActive
+        expr: finsight_drift_drill_active == 1
+        for: 0m
+        labels: {severity: info}
+        annotations:
+          summary: "A drift drill is running (synthetic drift, no data was changed)"
+
+  # ------------------------------------------------------------ resources
+  - name: finsight-resources
+    rules:
+      - alert: HostMemoryLow
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Only {{ $value | humanizePercentage }} of host memory is available"
+          description: "Stop sentiment-serve during heavy runs if this persists (docker compose stop sentiment-serve)."
+
+      - alert: HostDiskLow
+        expr: |
+          node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay"}
+            / node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} < 0.10
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Root filesystem has {{ $value | humanizePercentage }} free"
+          description: "See README 'Freeing disk space' (docker builder prune, dvc gc -w)."
+
+      - alert: ContainerNearMemoryLimit
+        expr: |
+          (container_memory_working_set_bytes{name=~"finsight-.*"}
+            / (container_spec_memory_limit_bytes{name=~"finsight-.*"} > 0)) > 0.9
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.name }} uses {{ $value | humanizePercentage }} of its memory limit"
+
+      - alert: ContainerOomKilled
+        expr: increase(container_oom_events_total{name=~"finsight-.*"}[10m]) > 0
+        for: 0m
+        labels: {severity: critical}
+        annotations:
+          summary: "{{ $labels.name }} was killed for running out of memory"

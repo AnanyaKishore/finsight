@@ -64,6 +64,13 @@ class ExecutionStore:
         )
         return _aware(doc["started_at"]) if doc else None
 
+    def last_started(self, kind: str) -> datetime | None:
+        """Start time of the newest run of ``kind`` (any trigger, any outcome)."""
+        doc = self.runs.find_one(
+            {"kind": kind}, {"started_at": 1}, sort=[("started_at", DESCENDING)]
+        )
+        return _aware(doc["started_at"]) if doc else None
+
     def last_finished(self, kind: str | None = None) -> dict[str, Any] | None:
         """The newest finished run (optionally of one kind)."""
         query: dict[str, Any] = {"status": {"$nin": ["running"]}}

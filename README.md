@@ -37,11 +37,13 @@ finsight/
 │   ├── portfolio/              # MPT grid search, SciPy check, walk-forward backtest, publishing
 │   ├── registry/               # promotion gate, register stage, rollback CLI, production pointer
 │   ├── scheduler/              # daily/retrain runs: schedule, step plan, runner, DAG, git/DVC, HTTP API (Day 7)
+│   ├── monitoring/             # drift (PSI/KS), live forecast error, freshness, report gauges, drift drill (Day 8)
 │   └── api/                    # FastAPI backend: routes, schemas, Mongo repository, model client, metrics, pipeline endpoints
 ├── frontend/                   # web portal: static HTML/CSS/JS + nginx template (Day 6)
+├── monitoring/                 # Prometheus config + alert rules (+ tests), Alertmanager, Grafana provisioning + dashboards (Day 8)
 ├── tests/{unit,integration}/   # pytest suites
 ├── notebooks/01_eda.ipynb      # exploratory data analysis (built by scripts/build_eda_notebook.py)
-├── scripts/                    # preflight check, notebook builder
+├── scripts/                    # preflight check, notebook and dashboard builders
 ├── docs/                       # plan, decisions, design docs
 ├── data/ models/               # DVC-managed (not in Git)
 └── reports/                    # small JSON metrics committed to Git
@@ -393,14 +395,14 @@ Use **Run now** in the console instead, or `docker compose stop scheduler` first
 in the console, fix, run again.
 ```bash
 docker compose exec mongo mongosh -u $MONGO_ROOT_USER -p $MONGO_ROOT_PASSWORD --authenticationDatabase admin finsight \
-  --eval 'db.prices.updateOne({ticker:"AAPL"}, {$set:{close:-1}}, {sort:{date:-1}})'
+  --eval 'db.prices.findOneAndUpdate({ticker:"AAPL"}, {$set:{close:-1}}, {sort:{date:-1}})'
 # console → Run now → the run fails at "Tests, export, validation, Spark ETL"; the
 # log tail shows prices.positive_values failed; later steps are "Skipped".
 docker compose run --rm ingestion repair      # re-fetches the broken bar (the fix the log suggests)
 # console → Run now → succeeds
 ```
 
-**Triggering without the console** (what Day 8's alerts will do):
+**Triggering without the console** (what Day 8's alerts do):
 ```bash
 curl -s -X POST localhost:8001/retrain -H "Authorization: Bearer $SCHEDULER_TOKEN" \
   -H 'Content-Type: application/json' -d '{"status":"firing","alerts":[{"labels":{"alertname":"Manual"}}]}'
@@ -413,6 +415,111 @@ detached HEAD, it skips the commit and says so in the run's last step.
 
 **Full logs:** `logs/scheduler/<run_id>.log` (every command's complete output);
 the console keeps the last 40 lines of a failed step.
+
+---
+
+## Day 8 runbook — monitoring, drift and automated retraining
+
+```
+every component ──/metrics──► Prometheus :9090 ──rules──► Alertmanager :9093
+  backend :8000 (HTTP, model calls, dependencies)          │ action="retrain"
+  scheduler :8001 (runs, steps, drift, live error,         ▼
+     data lag, data quality, model versions)        scheduler POST /retrain (token)
+  node-exporter (host), cAdvisor (every container,           │ 24 h cooldown
+     incl. mlflow + model servers), mongodb-exporter,        ▼
+     nginx-exporter (frontend), alertmanager, grafana   retrain run → promotion gate
+                         │                                   → promote or keep
+                         ▼
+                 Grafana :3000 (5 dashboards, provisioned from monitoring/grafana)
+browser #/pipeline ─► backend /api/monitoring ─► latest report (Mongo) + active alerts
+```
+
+The scheduler computes a **monitoring report** every 2 minutes and at the end
+of every run (`params.yaml` → `monitoring`):
+
+| Check | How | Alert |
+|---|---|---|
+| Returns drift | PSI and KS of each stock's last 60 daily log returns vs the 250 before (5 quantile bins) | `ReturnsDriftDetected` when ≥ 30 % of stocks have PSI > 0.25 → **retrain** |
+| Live forecast error | stored forecasts of the last 30 days vs the prices that came in, and the naive forecast on the same points | `ForecastErrorDegraded` when MAPE > 1.25 × naive and > 3 % (≥ 20 points) → **retrain** |
+| Sentiment shift | PSI of article scores, last 14 days vs the 90 before | `SentimentShift` (info, no retrain: the model is pretrained) |
+| Data freshness | trading days the newest price lags the latest session | `DataStale` (> 2) |
+| Data quality | failed checks in `reports/data_quality.json` | `DataQualityFailed` |
+
+Plus availability (`TargetDown`, `ModelServerDown`, `DependencyDown`), API
+(`ApiHighErrorRate` > 1 %, `ApiHighLatency` p95 > 300 ms), pipeline
+(`PipelineRunFailed`, `PipelineRunPartial`, `PipelineNotRunning`,
+`MonitoringStale`) and resources (`HostMemoryLow`, `HostDiskLow`,
+`ContainerNearMemoryLimit`, `ContainerOomKilled`). Rules:
+`monitoring/prometheus/rules/finsight.yml`, with unit tests in
+`monitoring/prometheus/tests/`.
+
+**1. One-time setting in `.env`**
+```bash
+echo "GRAFANA_ADMIN_PASSWORD=$(python -c 'import secrets; print(secrets.token_urlsafe(16))')" >> .env
+```
+
+**2. Update and start**
+```bash
+pip install -r requirements/dev.txt
+pytest tests/unit -q                              # expect all to pass (~225)
+docker compose up -d --build backend frontend     # new API endpoint, console card, nginx stub_status
+docker compose restart scheduler                  # new code is mounted; the process must restart
+docker compose up -d prometheus alertmanager grafana node-exporter cadvisor mongodb-exporter nginx-exporter
+docker compose ps                                 # all "Up"; prometheus "healthy"
+```
+Extra memory: about 0.5 GB in total (Prometheus 384 MB cap, Grafana 256 MB, the rest small).
+
+**3. Look around**
+
+| What | Where |
+|---|---|
+| Every scrape target is `UP` | http://localhost:9090/targets |
+| Alert rules and their state | http://localhost:9090/alerts |
+| Grafana (user `admin`, password from `.env`) — FinSight folder: Overview, API, Pipeline, Models & drift, Infrastructure | http://localhost:3000 |
+| Alertmanager: what is firing, silences | http://localhost:9093 |
+| Monitoring card: alerts, drift per stock, live MAPE vs naive | http://localhost:8080/#/pipeline |
+| Recompute the report now | `curl -s -X POST localhost:8001/monitor -H "X-Finsight-Token: $SCHEDULER_TOKEN" \| python -m json.tool \| head -40` |
+
+**4. Drift drill: the whole loop end to end** (about 10 minutes)
+```bash
+docker compose exec scheduler python -m finsight.monitoring.drill start --minutes 30
+```
+The drill makes the monitor multiply the recent returns by 4 and shift recent
+sentiment down by 0.5. It **never changes stored data** and ends by itself.
+- within 2 min: `finsight_drift_detected{feature="returns"} = 1`, the console shows a drill banner and every stock as *Drifted*;
+- after 5 min: `ReturnsDriftDetected` turns from *pending* to *firing* (Prometheus → Alerts);
+- 1 min later Alertmanager calls `POST /retrain`; a **retrain** run appears in the console with reason `alert: ReturnsDriftDetected`;
+- the retrain takes 20–60 min, and the promotion gate decides whether the new LSTM replaces the current one;
+- a second alert within 24 h is answered `200 {"ignored": "cooldown"}` and counted in `finsight_retrains_skipped_total`.
+```bash
+docker compose exec scheduler python -m finsight.monitoring.drill status
+docker compose exec scheduler python -m finsight.monitoring.drill stop
+```
+If memory is tight during the retrain: `docker compose stop sentiment-serve grafana`.
+
+**5. Check the rules and the Alertmanager config yourself**
+```bash
+docker compose exec prometheus promtool check config /etc/prometheus/prometheus.yml
+docker compose exec -w /etc/prometheus/tests prometheus promtool test rules finsight_test.yml
+docker compose exec alertmanager amtool check-config /etc/alertmanager/alertmanager.yml
+```
+
+**Changing a dashboard:** edit `scripts/build_dashboards.py`, run
+`make dashboards`, and Grafana picks up the JSON within 30 s. Edits made in the
+Grafana UI are not saved to the repo.
+
+**Changing a rule:** edit `monitoring/prometheus/rules/finsight.yml`, then
+`curl -X POST localhost:9090/-/reload`.
+
+### Freeing disk space
+Prometheus keeps at most 15 days or 1 GB. If `HostDiskLow` fires:
+```bash
+docker image prune -f && docker builder prune -af   # old images and build cache
+pip cache purge; conda clean -a -y
+dvc gc -w -f                                        # data no longer used by the workspace (never -c)
+```
+Never run `docker volume prune` or `docker compose down -v`: the volumes hold
+MongoDB, MLflow, Prometheus and Grafana data.
 
 ---
 

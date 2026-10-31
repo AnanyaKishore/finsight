@@ -1,6 +1,53 @@
 {
   "components": {
     "schemas": {
+      "ActiveAlert": {
+        "description": "An alert that is firing in Alertmanager.",
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "summary": {
+            "default": "",
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "severity"
+        ],
+        "title": "ActiveAlert",
+        "type": "object"
+      },
       "Allocation": {
         "description": "Weights and annualised statistics of one portfolio.",
         "properties": {
@@ -489,6 +536,47 @@
           "version"
         ],
         "title": "ModelRef",
+        "type": "object"
+      },
+      "MonitoringResponse": {
+        "description": "``GET /api/monitoring``: report sections as computed by the scheduler.",
+        "properties": {
+          "alertmanager_reachable": {
+            "title": "Alertmanager Reachable",
+            "type": "boolean"
+          },
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/ActiveAlert"
+            },
+            "title": "Alerts",
+            "type": "array"
+          },
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "generated_at, drill, returns, sentiment, forecast, freshness, quality, models",
+            "title": "Report"
+          }
+        },
+        "required": [
+          "report",
+          "alerts",
+          "alertmanager_reachable"
+        ],
+        "title": "MonitoringResponse",
         "type": "object"
       },
       "Overview": {
@@ -1770,6 +1858,58 @@
         "summary": "Model Info",
         "tags": [
           "operations"
+        ]
+      }
+    },
+    "/api/monitoring": {
+      "get": {
+        "description": "The newest monitoring report and Alertmanager's active alerts.",
+        "operationId": "monitoring_api_monitoring_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonitoringResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Monitoring",
+        "tags": [
+          "monitoring"
         ]
       }
     },

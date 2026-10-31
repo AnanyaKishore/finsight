@@ -370,3 +370,24 @@ class TriggerResponse(BaseModel):
 
     run_id: str
     kind: str
+
+
+class ActiveAlert(BaseModel):
+    """An alert that is firing in Alertmanager."""
+
+    name: str
+    severity: str
+    action: str | None = None
+    summary: str = ""
+    starts_at: datetime | None = None
+
+
+class MonitoringResponse(BaseModel):
+    """``GET /api/monitoring``: report sections as computed by the scheduler."""
+
+    report: dict[str, Any] | None = Field(
+        description="generated_at, drill, returns, sentiment, forecast, freshness, quality, models"
+    )
+    alerts: list[ActiveAlert]
+    alertmanager_reachable: bool
+    detail: str = ""

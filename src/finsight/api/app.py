@@ -14,6 +14,7 @@ Endpoints (I/O contracts in :mod:`finsight.api.schemas`, live docs at ``/docs``)
 ``GET  /api/model-info``            production versions from the MLflow registry
 ``GET  /api/pipeline/...``          Pipeline Console: status, runs, run detail, DAG, stats
 ``POST /api/pipeline/trigger``      start a daily run or a retrain (via the scheduler)
+``GET  /api/monitoring``            latest drift / live-error report + active alerts (Day 8)
 ``GET  /metrics``                   Prometheus metrics
 =================================  ==============================================
 
@@ -43,6 +44,7 @@ from finsight.api import schemas as s
 from finsight.api.config import ApiConfig
 from finsight.api.metrics import ApiMetrics
 from finsight.api.model_client import ModelClient, ModelUnavailable
+from finsight.api.monitoring import build_router as build_monitoring_router
 from finsight.api.pipeline import SchedulerClient, build_router
 from finsight.api.repository import MarketRepository, as_date, next_trading_days
 from finsight.common.config import Settings, get_settings
@@ -110,8 +112,10 @@ def create_app(  # noqa: C901 -- one function keeps every route visible in one p
     registry: Callable[[str], dict | None] | None = None,
     clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     scheduler: SchedulerClient | None = None,
+    monitoring_kwargs: dict[str, Any] | None = None,
 ) -> FastAPI:
     """Build the app; every dependency is injectable for tests."""
+    monitoring_kwargs = monitoring_kwargs or {}
     settings = settings or get_settings()
     config = config or ApiConfig.from_env()
     metrics = ApiMetrics()
@@ -484,9 +488,18 @@ def create_app(  # noqa: C901 -- one function keeps every route visible in one p
 
     scheduler = scheduler or SchedulerClient(config.scheduler_url, config.scheduler_token)
     app.include_router(build_router(db, scheduler, ApiError, clock))
+    app.include_router(
+        build_monitoring_router(db, config.alertmanager_url, ApiError, **monitoring_kwargs)
+    )
+    last_check = {"at": 0.0}
 
     @app.get("/metrics", include_in_schema=False)
     def prometheus() -> Response:
+        # Refresh finsight_dependency_up on scrapes (at most every 10 s), so the
+        # model-server alerts work even when nobody has the portal open.
+        if time.monotonic() - last_check["at"] > 10:
+            last_check["at"] = time.monotonic()
+            health()
         return Response(generate_latest(metrics.registry), media_type=CONTENT_TYPE_LATEST)
 
     return app

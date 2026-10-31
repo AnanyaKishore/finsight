@@ -7,6 +7,9 @@
   loop and starts the daily run when :meth:`Schedule.is_due` says so.
 * Every step is written to MongoDB as it starts and finishes, so the console
   shows live progress; afterwards the DVC DAG snapshot is refreshed.
+* Day 8: :meth:`SchedulerService.refresh_monitoring` computes the drift / live
+  error report every ``monitoring.interval_s`` and after each run, stores it
+  and exports it with the pipeline metrics; webhook retrains respect a cooldown.
 """
 
 from __future__ import annotations
@@ -17,7 +20,7 @@ import threading
 import time
 import uuid
 from collections.abc import Callable, Mapping, Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -25,8 +28,10 @@ import requests
 from prometheus_client import CollectorRegistry, Counter, Gauge
 
 from finsight.common.logging import get_logger
-from finsight.common.mongo import PIPELINE_RUNS
+from finsight.common.mongo import MONITORING_REPORTS, PIPELINE_RUNS
 from finsight.common.runs import git_commit
+from finsight.monitoring.metrics import MonitorMetrics
+from finsight.monitoring.monitor import build_report, summarise
 from finsight.scheduler.dag import build_dag
 from finsight.scheduler.plan import Step, overall_status, plan_for
 from finsight.scheduler.runner import StepResult, run_command
@@ -99,6 +104,25 @@ class SchedulerMetrics:
             ["measure"],
             registry=self.registry,
         )
+        self.retrains = Counter(
+            "finsight_retrains_triggered_total",
+            "Retrain runs started, by trigger (console, webhook, api)",
+            ["trigger"],
+            registry=self.registry,
+        )
+        self.retrains_skipped = Counter(
+            "finsight_retrains_skipped_total",
+            "Webhook retrains ignored because of the cooldown",
+            registry=self.registry,
+        )
+        self.monitor = MonitorMetrics(self.registry)
+        # Start every counter series at 0: Prometheus' increase() cannot count
+        # a series' first sample, so a first retrain would otherwise show as 0.
+        for kind in ("daily", "retrain"):
+            for status in STATUS_CODE:
+                self.runs.labels(kind, status)
+        for trigger in ("console", "webhook", "api"):
+            self.retrains.labels(trigger)
 
 
 class SchedulerService:
@@ -119,6 +143,8 @@ class SchedulerService:
         dag_builder: Callable[..., dict[str, Any]] = build_dag,
         http: Any = requests,
         sleep: Callable[[float], None] = time.sleep,
+        monitoring: dict[str, Any] | None = None,
+        monitor_builder: Callable[..., dict[str, Any]] = build_report,
     ) -> None:
         """Create the service; nothing runs until :meth:`start` or :meth:`tick`."""
         self.root, self.params, self.store = root, params, store
@@ -128,8 +154,11 @@ class SchedulerService:
         self.env = dict(env if env is not None else os.environ)
         self.clock, self.command_runner, self.dag_builder = clock, command_runner, dag_builder
         self.http, self.sleep = http, sleep
+        self.monitoring = monitoring or {}
+        self.monitor_builder = monitor_builder
         self.metrics = SchedulerMetrics()
         self._lock = threading.Lock()
+        self._monitor_lock = threading.Lock()
         self._current: str | None = None
         self._threads: list[threading.Thread] = []
 
@@ -140,11 +169,33 @@ class SchedulerService:
         return self._current is not None
 
     def recover(self) -> int:
-        """At start-up, close runs a previous process left as ``running``."""
+        """At start-up, close runs a previous process left as ``running``.
+
+        Also seeds the "last run" gauges from MongoDB, so a scheduler restart
+        does not blank the pipeline alerts until the next run.
+        """
         closed = self.store.mark_interrupted(self.clock())
         if closed:
             log.warning("closed interrupted runs", extra={"count": closed})
+        for kind in ("daily", "retrain"):
+            last = self.store.last_finished(kind)
+            if last and last.get("finished_at"):
+                finished = last["finished_at"]
+                finished = finished if finished.tzinfo else finished.replace(tzinfo=UTC)
+                self.metrics.last_status.labels(kind).set(STATUS_CODE.get(last["status"], 0))
+                self.metrics.last_finished.labels(kind).set(finished.timestamp())
+                if last.get("duration_s") is not None:
+                    self.metrics.duration.labels(kind).set(last["duration_s"])
         return closed
+
+    def retrain_cooldown_left(self) -> timedelta | None:
+        """Time until a webhook may start another retrain (``None`` = allowed now)."""
+        hours = float(self.monitoring.get("retrain_cooldown_h", 0) or 0)
+        last = self.store.last_started("retrain")
+        if not hours or last is None:
+            return None
+        left = last + timedelta(hours=hours) - self.clock()
+        return left if left > timedelta(0) else None
 
     def start(self, kind: str, trigger: str, reason: str = "", wait: bool = False) -> str:
         """Start a run in a worker thread and return its ``run_id``.
@@ -189,6 +240,8 @@ class SchedulerService:
             self._lock.release()
             raise
         self.metrics.running.set(1)
+        if kind == "retrain":
+            self.metrics.retrains.labels(trigger).inc()
         log.info("run started", extra={"run_id": run_id, "kind": kind, "trigger": trigger})
         thread = threading.Thread(
             target=self._execute, args=(run_id, kind, steps), name=f"run-{run_id}", daemon=True
@@ -353,6 +406,8 @@ class SchedulerService:
             )
         if step.type == "forecasts":
             return self._forecasts(context)
+        if step.type == "monitor":
+            return self._monitor()
         if step.type == "version":
             return self._version(run_id)
         raise ValueError(f"unknown step type {step.type}")
@@ -421,6 +476,58 @@ class SchedulerService:
             detail="; ".join(notes),
             error="; ".join(errors[:5]) or None,
             metrics={"forecasts": done, **counts},
+        )
+
+    # ----------------------------------------------------------- monitoring
+    def refresh_monitoring(self) -> dict[str, Any] | None:
+        """Compute, store and export the monitoring report (one at a time)."""
+        if not self.monitoring:
+            return None
+        with self._monitor_lock:
+            report = self.monitor_builder(
+                self.store.db, self.root, self.monitoring, now=self.clock()
+            )
+            try:
+                self.store.db[MONITORING_REPORTS].insert_one(dict(report))
+            except Exception as exc:  # noqa: BLE001 -- metrics still update
+                log.warning("could not store monitoring report", extra={"error": _short(exc)})
+            self.metrics.monitor.update(report)
+            return report
+
+    def monitor_loop(self, stop: threading.Event) -> None:
+        """Refresh the monitoring report every ``monitoring.interval_s``."""
+        interval = float(self.monitoring.get("interval_s", 120))
+        while not stop.is_set():
+            try:
+                self.refresh_monitoring()
+            except Exception:  # noqa: BLE001 -- keep monitoring through bad data
+                log.exception("monitoring refresh failed")
+            stop.wait(interval)
+
+    def _monitor(self) -> StepResult:
+        started = time.monotonic()
+        report = self.refresh_monitoring()
+        if report is None:
+            return StepResult("skipped", detail="monitoring not configured")
+        failed = [
+            k for k, v in report.items() if isinstance(v, dict) and v.get("status") == "error"
+        ]
+        alerts = [
+            name
+            for name, section in (("returns drift", "returns"), ("sentiment shift", "sentiment"),
+                                  ("forecast error", "forecast"))  # fmt: skip
+            if (report.get(section) or {}).get("detected")
+        ]
+        detail = summarise(report) + (f"; ALERT: {', '.join(alerts)}" if alerts else "")
+        return StepResult(
+            "partial" if failed else "success",
+            round(time.monotonic() - started, 2),
+            detail=detail[:500],
+            error=f"sections failed: {', '.join(failed)}" if failed else None,
+            metrics={
+                "returns_drifted_share": (report.get("returns") or {}).get("drifted_share"),
+                "live_mape": (report.get("forecast") or {}).get("mape"),
+            },
         )
 
     # ------------------------------------------------------------- version

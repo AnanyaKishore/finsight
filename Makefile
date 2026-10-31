@@ -3,7 +3,7 @@
 # Load .env (if present) so targets can use the same variables as compose.
 -include .env
 export
-.PHONY: help install lint format test test-int up down mongo-shell ingest-plan backfill incremental status build repro dag eda benchmark train plots sentiment portfolio feature-experiment mlflow-ui register serve api-dev rollback-lstm frontend web-dev scheduler run-now retrain-now
+.PHONY: help install lint format test test-int up down mongo-shell ingest-plan backfill incremental status build repro dag eda benchmark train plots sentiment portfolio feature-experiment mlflow-ui register serve api-dev rollback-lstm frontend web-dev scheduler run-now retrain-now monitoring dashboards drill-start drill-stop rules-test
 
 help:            ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*## "}{printf "  %-20s %s\n",$$1,$$2}'
@@ -103,3 +103,19 @@ run-now:         ## start a daily pipeline run now (same as "Run now" in the con
 
 retrain-now:     ## start a retrain now (same as "Retrain now" in the console)
 	curl -s -X POST localhost:8001/run -H "X-Finsight-Token: $$SCHEDULER_TOKEN" -H 'Content-Type: application/json' -d '{"kind":"retrain","reason":"make retrain-now"}'; echo
+
+monitoring:      ## start Prometheus, Alertmanager, Grafana and the exporters (Day 8)
+	docker compose up -d prometheus alertmanager grafana node-exporter cadvisor mongodb-exporter nginx-exporter
+
+dashboards:      ## regenerate the Grafana dashboards from scripts/build_dashboards.py
+	python scripts/build_dashboards.py
+
+drill-start:     ## drift drill: the monitor sees drifted data for 30 min (stored data untouched)
+	docker compose exec scheduler python -m finsight.monitoring.drill start --minutes 30
+
+drill-stop:      ## end the drift drill now
+	docker compose exec scheduler python -m finsight.monitoring.drill stop
+
+rules-test:      ## check the Prometheus config and run the alert-rule unit tests (in the container)
+	docker compose exec prometheus promtool check config /etc/prometheus/prometheus.yml
+	docker compose exec -w /etc/prometheus/tests prometheus promtool test rules finsight_test.yml

@@ -10,8 +10,10 @@
 #   backend          FastAPI REST API + Prometheus /metrics                      (Day 5)
 #   frontend         nginx: the web portal at http://localhost:8080              (Day 6)
 #   scheduler        daily pipeline runs + retrain trigger API on :8001          (Day 7)
-# Later days add: prometheus, alertmanager, grafana,
-# node-exporter, mongodb-exporter.
+#   prometheus       metrics + alert rules at http://localhost:9090              (Day 8)
+#   alertmanager     alert routing (retrain webhook) at http://localhost:9093    (Day 8)
+#   grafana          dashboards at http://localhost:3000                         (Day 8)
+#   node-exporter, cadvisor, mongodb-exporter, nginx-exporter                    (Day 8)
 #
 # Memory budget (8 GB laptop): every service gets an explicit mem_limit so the
 # full stack stays under ~5 GB. See docs/PROJECT_PLAN.md, "Resource budget".
@@ -182,6 +184,7 @@ services:
       # backend, which adds the shared token; the browser never sees it.
       SCHEDULER_URL: http://scheduler:8001
       SCHEDULER_TOKEN: ${SCHEDULER_TOKEN:-}
+      ALERTMANAGER_URL: http://alertmanager:9093   # active alerts for the console (Day 8)
     ports:
       - "127.0.0.1:8000:8000"     # API + docs at http://localhost:8000/docs
     depends_on:
@@ -207,9 +210,10 @@ services:
       # Must also be allowed by the backend's FRONTEND_ORIGINS (CORS).
       BACKEND_URL: ${BACKEND_URL:-http://localhost:8000}
       MLFLOW_UI_URL: ${MLFLOW_UI_URL:-http://localhost:5000}
-      # Linked from the Pipeline Console (the services arrive on Day 8).
+      # Linked from the Pipeline Console.
       PROMETHEUS_UI_URL: ${PROMETHEUS_UI_URL:-http://localhost:9090}
       GRAFANA_UI_URL: ${GRAFANA_UI_URL:-http://localhost:3000}
+      ALERTMANAGER_UI_URL: ${ALERTMANAGER_UI_URL:-http://localhost:9093}
     ports:
       - "127.0.0.1:8080:8080"     # the portal: http://localhost:8080
     healthcheck:
@@ -286,9 +290,148 @@ services:
     mem_limit: 3g
     networks: [finsight]
 
+  # ------------------------------------------------------------- Day 8 ----
+  # Monitoring. Every UI is bound to localhost; exporters are reachable only
+  # on the compose network. Image versions are pinned.
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    container_name: finsight-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # The laptop's disk is small: keep 15 days or 1 GB, whichever comes first.
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.size=1GB
+      - --web.enable-lifecycle          # reload config: curl -X POST localhost:9090/-/reload
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
+      - ./monitoring/prometheus/tests:/etc/prometheus/tests:ro   # promtool test rules
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9090/-/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    mem_limit: 384m
+    networks: [finsight]
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    container_name: finsight-alertmanager
+    restart: unless-stopped
+    # Alertmanager cannot read environment variables in its config, so the
+    # scheduler token is written to a file (inside the container only) first.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        umask 077
+        printf '%s' "$$SCHEDULER_TOKEN" > /tmp/scheduler_token
+        exec /bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml \
+          --storage.path=/alertmanager --web.external-url=http://localhost:9093
+    environment:
+      SCHEDULER_TOKEN: ${SCHEDULER_TOKEN:-}
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    ports:
+      - "127.0.0.1:9093:9093"
+    mem_limit: 64m
+    networks: [finsight]
+
+  grafana:
+    image: grafana/grafana-oss:12.1.1
+    container_name: finsight-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env (see README, Day 8)}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/finsight-overview.json
+      # Self-hosted, no cloud: no phoning home, no news feed, no plugin downloads.
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      GF_METRICS_ENABLED: "true"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on: [prometheus]
+    mem_limit: 256m
+    networks: [finsight]
+
+  node-exporter:
+    image: prom/node-exporter:v1.9.1
+    container_name: finsight-node-exporter
+    restart: unless-stopped
+    command:
+      - --path.rootfs=/host
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run|var/lib/docker/.+)($$|/)
+    volumes:
+      - /:/host:ro
+    pid: host
+    mem_limit: 48m
+    networks: [finsight]
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.52.1
+    container_name: finsight-cadvisor
+    restart: unless-stopped
+    # Per-container CPU / memory for EVERY service, including mlflow, the
+    # model servers and the frontend, which have no /metrics of their own.
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=30s
+      - --store_container_labels=false
+      - --disable_metrics=advtcp,cpu_topology,cpuset,disk,diskIO,hugetlb,memory_numa,percpu,process,referenced_memory,resctrl,sched,tcp,udp
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    devices:
+      - /dev/kmsg
+    privileged: true          # cAdvisor reads cgroup data for all containers
+    mem_limit: 192m
+    networks: [finsight]
+
+  mongodb-exporter:
+    image: percona/mongodb_exporter:0.44.0
+    container_name: finsight-mongodb-exporter
+    restart: unless-stopped
+    # diagnosticdata = serverStatus (operations, connections); dbstats = sizes per database.
+    command: ["--compatible-mode", "--collector.diagnosticdata", "--collector.dbstats"]
+    environment:
+      MONGODB_URI: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongo:27017/admin
+    depends_on:
+      mongo:
+        condition: service_healthy
+    mem_limit: 64m
+    networks: [finsight]
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.4.2
+    container_name: finsight-nginx-exporter
+    restart: unless-stopped
+    command: ["--nginx.scrape-uri=http://frontend:8081/stub_status"]
+    depends_on: [frontend]
+    mem_limit: 32m
+    networks: [finsight]
+
 volumes:
   mongo_data:
   mlflow_data:
+  prometheus_data:
+  alertmanager_data:
+  grafana_data:
 
 networks:
   finsight:

@@ -410,3 +410,10 @@ ul.kv li { display: flex; justify-content: space-between; gap: 12px; padding: 3p
   h1 { font-size: 22px; }
   .card { padding: 14px; }
 }
+/* Monitoring card */
+.alert-list { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 8px; }
+.alert-list li { padding: 10px 12px; border-radius: 10px; background: var(--surface-2); }
+.alert-list .chip { margin-right: 6px; }
+#mo-body > .notice { margin-bottom: 12px; }
+.drift-table th[scope="row"] { font-weight: 600; text-align: left; }
+.drift-table td { white-space: nowrap; }

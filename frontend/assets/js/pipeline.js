@@ -7,7 +7,7 @@
 // only the buttons need the scheduler. While a run is in progress the page
 // polls every 5 s, otherwise every 30 s.
 
-import { GRAFANA_URL, MLFLOW_URL, PROMETHEUS_URL, endpoints } from "./api.js";
+import { ALERTMANAGER_URL, GRAFANA_URL, MLFLOW_URL, PROMETHEUS_URL, endpoints } from "./api.js";
 import { durationChart, throughputChart } from "./charts.js";
 import { escapeHtml, fmtDuration, fmtStamp } from "./format.js";
 
@@ -76,8 +76,12 @@ export function renderPipeline(view, signal, ui) {
         <p class="caption ops-links">Tools:
           <a href="${escapeHtml(MLFLOW_URL)}" target="_blank" rel="noopener">MLflow experiments and registry</a> ·
           <a href="${escapeHtml(PROMETHEUS_URL)}" target="_blank" rel="noopener">Prometheus</a> ·
-          <a href="${escapeHtml(GRAFANA_URL)}" target="_blank" rel="noopener">Grafana dashboards</a>
-          <span class="muted">(Prometheus and Grafana start on Day 8)</span></p>
+          <a href="${escapeHtml(GRAFANA_URL)}" target="_blank" rel="noopener">Grafana dashboards</a> ·
+          <a href="${escapeHtml(ALERTMANAGER_URL)}" target="_blank" rel="noopener">Alertmanager</a></p>
+      </section>
+      <section class="card span-12" aria-labelledby="mo-h">
+        <div class="card-head"><h2 id="mo-h">Monitoring</h2><span class="sub" id="mo-sub"></span></div>
+        <div id="mo-body">${ui.skeleton("lines")}</div>
       </section>
       <section class="card span-12" aria-labelledby="st-h">
         <div class="card-head"><h2 id="st-h">Last 30 days</h2></div>
@@ -380,7 +384,27 @@ export function renderPipeline(view, signal, ui) {
   }
 
   // -------------------------------------------------------------- polling
+  // ----------------------------------------------------------- monitoring
+  async function loadMonitoring() {
+    const body = document.getElementById("mo-body");
+    const sub = document.getElementById("mo-sub");
+    try {
+      const m = await endpoints.monitoring({ signal });
+      const r = m.report;
+      sub.textContent = r ? `drift and live error, computed ${fmtStamp(r.generated_at)}` : "";
+      body.innerHTML = monitoringHtml(m);
+    } catch (error) {
+      if (ui.isAbort(error)) return;
+      if (error.code === "no_monitoring") {
+        ui.showEmpty(body, "No monitoring report yet. The scheduler computes one within two minutes of starting.");
+      } else {
+        ui.showError(body, error, "the monitoring report", loadMonitoring);
+      }
+    }
+  }
+
   function refreshAll() {
+    loadMonitoring();
     loadStats();
     loadDag();
     loadRuns();
@@ -390,6 +414,7 @@ export function renderPipeline(view, signal, ui) {
     clearTimeout(state.timer);
     if (signal.aborted) return;
     const st = await loadStatus();
+    loadMonitoring();
     if (st?.busy || force) {
       loadRuns();
       if (state.selected) openRun(state.selected, false);
@@ -406,6 +431,68 @@ export function renderPipeline(view, signal, ui) {
 }
 
 // ------------------------------------------------------------ rendering
+const SEVERITY_CHIP = { critical: "st-failed", warning: "st-partial", info: "st-running" };
+
+function monitoringHtml(m) {
+  const r = m.report || {};
+  const parts = [];
+  if (r.drill) {
+    parts.push(`<div class="notice warn" role="status"><strong>Drift drill running</strong> until ${fmtStamp(r.drill.until)}:
+      recent returns are scaled ${escapeHtml(r.drill.scale)}x inside the monitor only. No stored data was changed.</div>`);
+  }
+  // Alerts
+  if (!m.alertmanager_reachable) {
+    parts.push(`<p class="caption">Alertmanager is not reachable, so active alerts cannot be shown. ${escapeHtml(m.detail)}</p>`);
+  } else if (!m.alerts.length) {
+    parts.push(`<p class="run-state"><span class="chip st-success">No alerts</span> Nothing is firing.</p>`);
+  } else {
+    parts.push(`<ul class="alert-list">${m.alerts
+      .map((a) => `<li><span class="chip ${SEVERITY_CHIP[a.severity] || "st-never"}">${escapeHtml(a.severity)}</span>
+        <strong>${escapeHtml(a.name)}</strong>${a.action === "retrain" ? ' <span class="muted small">(starts a retrain)</span>' : ""}
+        <div class="small">${escapeHtml(a.summary)}</div></li>`)
+      .join("")}</ul>`);
+  }
+  // Headline numbers
+  const ret = r.returns || {};
+  const sen = r.sentiment || {};
+  const fc = r.forecast || {};
+  const tile = (label, value, note = "") =>
+    `<div class="stat"><dt>${label}</dt><dd class="tabular">${value}</dd>${note ? `<div class="small muted">${note}</div>` : ""}</div>`;
+  const drifted = ret.per_ticker ? Object.values(ret.per_ticker).filter((v) => v.drifted).length : null;
+  const scored = ret.per_ticker ? Object.values(ret.per_ticker).filter((v) => v.psi != null).length : null;
+  parts.push(`<dl class="stats six">
+    ${tile("Returns drift", ret.detected ? "Yes" : ret.per_ticker ? "No" : "–", scored != null ? `${drifted} of ${scored} stocks` : "")}
+    ${tile("Largest PSI", ret.max_psi ?? "–", `alert above ${ret.threshold ?? 0.25}`)}
+    ${tile("Sentiment PSI", sen.psi ?? "–", sen.psi != null ? `mean ${sen.mean_reference} → ${sen.mean_current}` : "not enough news yet")}
+    ${tile("LSTM live MAPE", fc.mape != null ? `${fc.mape}%` : "–", fc.mape != null ? `${fc.points} realised points` : `${fc.points ?? 0} of 20 points needed`)}
+    ${tile("Naive live MAPE", fc.naive_mape != null ? `${fc.naive_mape}%` : "–", "price stays the same")}
+    ${tile("Prices behind", r.freshness?.max_lag ?? "–", "trading days")}
+  </dl>`);
+  // Per-ticker drift table
+  if (ret.per_ticker) {
+    const rows = Object.entries(ret.per_ticker)
+      .sort((a, b) => (b[1].psi ?? -1) - (a[1].psi ?? -1))
+      .map(([t, v]) => [
+        escapeHtml(t),
+        v.psi ?? "–",
+        v.ks ?? "–",
+        v.current_volatility != null ? `${(v.current_volatility * 100).toFixed(2)}%` : "–",
+        v.reference_volatility != null ? `${(v.reference_volatility * 100).toFixed(2)}%` : "–",
+        v.psi == null ? "not enough data" : v.drifted ? '<span class="chip st-failed">Drifted</span>' : '<span class="chip st-success">Stable</span>',
+      ]);
+    const head = ["Stock", "PSI", "KS", "Daily volatility, last 60 days", "Daily volatility, year before", "Status"];
+    parts.push(`<div class="table-wrap"><table class="drift-table"><caption class="visually-hidden">Returns drift per stock</caption>
+      <thead><tr>${head.map((h) => `<th scope="col">${h}</th>`).join("")}</tr></thead>
+      <tbody>${rows.map((r) => `<tr>${r.map((c, i) => (i === 0 ? `<th scope="row">${c}</th>` : `<td class="tabular">${c}</td>`)).join("")}</tr>`).join("")}</tbody>
+    </table></div>`);
+  }
+  parts.push(`<p class="caption">PSI compares each stock's last 60 daily returns with the year before (above 0.25 is a significant
+    shift). When 30% of stocks drift, or the live forecast error is 1.25 times the naive forecast's, an alert asks the scheduler to
+    retrain; the promotion gate then decides whether the new model replaces the current one. Charts over time are in
+    <a href="${escapeHtml(GRAFANA_URL)}/d/finsight-models" target="_blank" rel="noopener">Grafana</a>.</p>`);
+  return parts.join("");
+}
+
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** A timestamp in the scheduler's time zone (the run time is defined there, not in the browser's). */

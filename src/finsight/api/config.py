@@ -11,6 +11,7 @@ variable                       default                     meaning
 ``REGISTRY_CACHE_S``           ``60``                      cache for ``/api/model-info``
 ``SCHEDULER_URL``              ``http://localhost:8001``   scheduler service (Day 7)
 ``SCHEDULER_TOKEN``            (unset)                     shared token; unset = no console triggers
+``ALERTMANAGER_URL``           ``http://localhost:9093``   active alerts for ``/api/monitoring``
 =============================  ==========================  =====================================
 
 MongoDB and MLflow settings come from the shared ``finsight.common.config``.
@@ -43,6 +44,7 @@ class ApiConfig:
     model_retries: int = 2
     registry_cache_s: float = 60.0
     scheduler_url: str = "http://localhost:8001"
+    alertmanager_url: str = "http://localhost:9093"
     scheduler_token: str | None = field(default=None, repr=False)
     lstm_name: str = "finsight-lstm"
     sentiment_name: str = "finsight-sentiment"
@@ -62,5 +64,6 @@ class ApiConfig:
             model_retries=int(env.get("MODEL_RETRIES", cls.model_retries)),
             registry_cache_s=float(env.get("REGISTRY_CACHE_S", cls.registry_cache_s)),
             scheduler_url=env.get("SCHEDULER_URL", cls.scheduler_url).rstrip("/"),
+            alertmanager_url=env.get("ALERTMANAGER_URL", cls.alertmanager_url).rstrip("/"),
             scheduler_token=usable_secret(env.get("SCHEDULER_TOKEN")),
         )
