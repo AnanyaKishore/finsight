@@ -13,13 +13,35 @@ all self-hosted with Docker Compose.
 | [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) | 11-day plan, rubric map, memory budget, risks |
 | [`docs/DESIGN_DECISIONS.md`](docs/DESIGN_DECISIONS.md) | Every deviation from the proposal / baseline, with rationale |
 | [`docs/DATA_CARD.md`](docs/DATA_CARD.md) | Data sources, formats, lineage, biases, EDA findings |
-| [`docs/LLD.md`](docs/LLD.md) + [`docs/api/openapi.json`](docs/api/openapi.json) | Endpoint I/O specs, error codes, data stores, registry, degradation matrix (draft) |
+| [`docs/LLD.md`](docs/LLD.md) + [`docs/api/openapi.json`](docs/api/openapi.json) | Endpoint I/O specs, error codes, data stores, registry, degradation matrix |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Architecture diagram and every block explained |
 | [`docs/HLD.md`](docs/HLD.md) | High-level design: goals, flows, design choices and rationale |
 | [`docs/USER_MANUAL.md`](docs/USER_MANUAL.md) | How to use the portal (non-technical) |
 | [`docs/TEST_PLAN.md`](docs/TEST_PLAN.md), [`TEST_CASES.md`](docs/TEST_CASES.md), [`TEST_REPORT.md`](docs/TEST_REPORT.md) | Test plan, acceptance criteria, every test case, latest results |
 | [`docs/REPRODUCIBILITY.md`](docs/REPRODUCIBILITY.md) | Reproducibility drill: commit + MLflow run ID → same metrics |
 | [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md) | Every guideline question → where FinSight answers it |
+| [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md), [`docs/VIVA_PREP.md`](docs/VIVA_PREP.md) | 10-minute demo, act by act; viva questions and answers |
+
+## Quick start (a machine where FinSight is already set up)
+
+```bash
+cd finsight && mamba activate finsight
+docker compose up -d          # all 14 services, about a minute
+make preflight                # is everything up and ready to show?
+```
+
+| What | Where |
+|---|---|
+| Web portal (user view) | http://localhost:8080 |
+| Pipeline Console | http://localhost:8080/#/pipeline |
+| API and its docs | http://localhost:8000/docs |
+| MLflow (experiments, registry) | http://localhost:5000 |
+| Grafana (dashboards) | http://localhost:3000 |
+| Prometheus (alerts) / Alertmanager | http://localhost:9090/alerts, http://localhost:9093 |
+
+Everything binds to `127.0.0.1` only. To set FinSight up on a new machine, follow the
+runbooks below in order, from Day 1. They need the encryption key (Day 9) and the DVC
+remote folder.
 
 ## Repository layout (grows day by day)
 
@@ -582,6 +604,30 @@ It clones the repository into a temporary folder, checks out the commit, decrypt
 `dvc pull`s that commit's data, retrains with `mlflow run . -e train_lstm`, evaluates, and
 writes [`docs/REPRODUCIBILITY.md`](docs/REPRODUCIBILITY.md) with both run IDs and the metric
 comparison. About 5 minutes; your working copy is not touched.
+
+## Day 11 runbook — dress rehearsal and release
+
+```bash
+docker compose down                       # containers go, data volumes stay
+# every image from scratch, one at a time (parallel builds share a slow connection):
+docker compose build --no-cache mlflow
+docker compose build --no-cache backend
+docker compose build --no-cache lstm-serve                  # also used by sentiment-serve
+docker compose --profile jobs build --no-cache ingestion    # the pipeline image the scheduler runs
+docker compose build --no-cache frontend
+docker image prune -f                     # remove the old, now untagged images
+docker compose up -d && make preflight    # all PASS?
+# console → Run now → wait for success, then:
+make e2e && make load-test && make test-report
+```
+
+Rehearse the demo with [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md), timing each act.
+`make preflight` also reports AC-11 progress ("needs N more successful scheduled runs").
+When it says *passes*, regenerate the report and tag the release:
+```bash
+make test-report && git add -A && git commit -m "Release v1.0: final test report"
+git tag v1.0 && git push && git push origin v1.0
+```
 
 ---
 

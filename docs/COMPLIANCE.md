@@ -63,7 +63,7 @@ Legend: ✅ done · ◐ partly / by design different (explained) · — not appl
 | Is the design document strictly adhered to? | OpenAPI generated from code; contract test; DESIGN_DECISIONS records every deviation from the proposal with its reason | ✅ |
 | Comprehensive inline documentation? | Google-style docstrings enforced by ruff `D` rules on every public module, class and function; comments explain *why* | ✅ |
 | Do the APIs follow the interface specification? | `tests/unit/test_api_contract.py`, `tests/unit/test_api.py`, e2e tests | ✅ |
-| Unit tests implemented? | 265 unit tests, 4 integration, 16 e2e (TEST_REPORT) | ✅ |
+| Unit tests implemented? | 278 unit tests, 4 integration, 16 e2e (TEST_REPORT) | ✅ |
 
 ### Software engineering — testing
 
@@ -121,9 +121,12 @@ Legend: ✅ done · ◐ partly / by design different (explained) · — not appl
 
 ### Viva
 
-Preparation material: HLD §5 (choices and alternatives), DESIGN_DECISIONS (D-01…D-13 and the
-day-by-day log, each with evidence), TEST_PLAN §5 (why each threshold), the "Viva notes" in
-each day's guide. Challenge questions to rehearse are in §D below.
+| Preparation | Where |
+|---|---|
+| Q&A sheet: the ten questions of §D answered, tool choices, modelling, operations, testing, a one-line defence of D-01…D-13, honest limitations | [`docs/VIVA_PREP.md`](VIVA_PREP.md) |
+| 10-minute demo, act by act, with a fallback for each thing that can go wrong | [`docs/DEMO_SCRIPT.md`](DEMO_SCRIPT.md) |
+| Readiness check before the demo (containers, models, drill off, alerts, next run, memory) | `make preflight` |
+| Background | HLD §5 (choices and alternatives), DESIGN_DECISIONS (with evidence), TEST_PLAN §5 (why each threshold) |
 
 ## C. Development guidelines
 

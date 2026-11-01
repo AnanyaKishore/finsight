@@ -152,10 +152,10 @@ metrics, stored forecasts, graceful degradation), `docs/LLD.md` + `docs/api/open
 - `ARCHITECTURE.md` (diagram + block explanations), `HLD.md`, `LLD.md`, `USER_MANUAL.md` (screenshots, non-technical), README.
 - Reproducibility drill (as in q4demo): fresh clone → `git checkout <commit>` → `dvc pull` → `mlflow run` → identical metrics; record commit hash + run ID.
 
-### Day 11 — Sat 31 Oct · Buffer, dress rehearsal, viva prep
-- Full `docker compose up` on a clean machine state; fix anything found.
-- Demo script; viva Q&A sheet (Assignments 1–10, tool choices, defending D-01…D-10).
-- `git tag v1.0`.
+### Day 11 — Sat 31 Oct · Buffer, dress rehearsal, viva prep ✅ (done 1 Nov)
+- Dress rehearsal: images rebuilt without cache, fresh containers, `make preflight`, a full console run, e2e, load test and test report.
+- `docs/DEMO_SCRIPT.md` (10 minutes, act by act, with fallbacks) and `docs/VIVA_PREP.md` (Q&A, tool choices, D-01…D-13).
+- `git tag v1.0` once AC-11 passes: the fifth successful scheduled run after Day 10 is due on Sat 7 Nov.
 
 ---
 
