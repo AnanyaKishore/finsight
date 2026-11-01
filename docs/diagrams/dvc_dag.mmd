@@ -1,0 +1,15 @@
+flowchart TD
+  unit_tests["unit_tests<br/>(CI gate)"] --> export & es1 & es2
+  export["export<br/>Mongo → Parquet"] --> validate["validate<br/>21 expectations"] --> process["process<br/>Spark ETL"]
+  export --> process
+  fsd["fetch_sentiment_data<br/>PhraseBank, Twitter fin."] --> es1 & es2 & register
+  fs1["fetch_sentiment@distilbert_sst2"] --> es1["evaluate_sentiment@distilbert_sst2"]
+  fs2["fetch_sentiment@finbert"] --> es2["evaluate_sentiment@finbert"]
+  process --> train["train_lstm<br/>grid + refit"] --> evaluate["evaluate_lstm<br/>test windows vs naive"]
+  process --> evaluate & register & score
+  train --> register
+  evaluate --> register["register<br/>promotion gate"]
+  es1 & es2 --> register
+  es1 & es2 --> score["score_sentiment"]
+  register --> score
+  process --> portfolio["optimize_portfolio<br/>grid + walk-forward"]

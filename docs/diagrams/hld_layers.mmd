@@ -1,0 +1,28 @@
+flowchart TB
+  subgraph L1["1 · Presentation"]
+    ui["Web portal (static, nginx)<br/>talks to the backend only through REST"]
+  end
+  subgraph L2["2 · Service"]
+    api["FastAPI backend<br/>validation · caching · error codes · CORS · /metrics"]
+  end
+  subgraph L3["3 · Inference"]
+    inf["MLflow model servers<br/>LSTM forecaster · sentiment classifier"]
+  end
+  subgraph L4["4 · Learning pipeline (offline)"]
+    pipe["DVC DAG: ingest → validate → Spark ETL → train → evaluate → gate → register → score → optimise"]
+    trk["MLflow tracking + registry"]
+  end
+  subgraph L5["5 · Data"]
+    db[("MongoDB")]
+    vc[("Git + DVC remote")]
+  end
+  subgraph L6["6 · Operations"]
+    ops["Scheduler · Prometheus · Alertmanager · Grafana"]
+  end
+  ui --> api --> inf
+  api --> db
+  pipe --> trk --> inf
+  pipe --> db
+  pipe --> vc
+  ops -. "runs, watches, retrains" .-> pipe
+  ops -. "scrapes" .-> api

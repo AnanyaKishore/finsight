@@ -14,7 +14,12 @@ all self-hosted with Docker Compose.
 | [`docs/DESIGN_DECISIONS.md`](docs/DESIGN_DECISIONS.md) | Every deviation from the proposal / baseline, with rationale |
 | [`docs/DATA_CARD.md`](docs/DATA_CARD.md) | Data sources, formats, lineage, biases, EDA findings |
 | [`docs/LLD.md`](docs/LLD.md) + [`docs/api/openapi.json`](docs/api/openapi.json) | Endpoint I/O specs, error codes, data stores, registry, degradation matrix (draft) |
-| `docs/ARCHITECTURE.md`, `HLD.md`, `TEST_PLAN.md`, `USER_MANUAL.md` | Added Days 6–10 |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Architecture diagram and every block explained |
+| [`docs/HLD.md`](docs/HLD.md) | High-level design: goals, flows, design choices and rationale |
+| [`docs/USER_MANUAL.md`](docs/USER_MANUAL.md) | How to use the portal (non-technical) |
+| [`docs/TEST_PLAN.md`](docs/TEST_PLAN.md), [`TEST_CASES.md`](docs/TEST_CASES.md), [`TEST_REPORT.md`](docs/TEST_REPORT.md) | Test plan, acceptance criteria, every test case, latest results |
+| [`docs/REPRODUCIBILITY.md`](docs/REPRODUCIBILITY.md) | Reproducibility drill: commit + MLflow run ID → same metrics |
+| [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md) | Every guideline question → where FinSight answers it |
 
 ## Repository layout (grows day by day)
 
@@ -41,7 +46,7 @@ finsight/
 │   └── api/                    # FastAPI backend: routes, schemas, Mongo repository, model client, metrics, pipeline endpoints
 ├── frontend/                   # web portal: static HTML/CSS/JS + nginx template (Day 6)
 ├── monitoring/                 # Prometheus config + alert rules (+ tests), Alertmanager, Grafana provisioning + dashboards (Day 8)
-├── tests/{unit,integration}/   # pytest suites
+├── tests/{unit,integration,e2e}/  # pytest suites (e2e needs the running stack)
 ├── notebooks/01_eda.ipynb      # exploratory data analysis (built by scripts/build_eda_notebook.py)
 ├── scripts/                    # preflight check, notebook and dashboard builders
 ├── docs/                       # plan, decisions, design docs
@@ -559,6 +564,24 @@ make e2e                # 16 end-to-end smoke tests (each skips if its service i
 make load-test          # 10 users for 60 s -> reports/load_test.json
 make test-report        # all suites + criteria -> docs/TEST_REPORT.md, docs/TEST_CASES.md
 ```
+
+## Day 10 runbook — documentation and the reproducibility drill
+
+Mandatory documents: [`ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`HLD.md`](docs/HLD.md),
+[`LLD.md`](docs/LLD.md), [`TEST_PLAN.md`](docs/TEST_PLAN.md) + [`TEST_CASES.md`](docs/TEST_CASES.md),
+[`USER_MANUAL.md`](docs/USER_MANUAL.md). Checklist against both guideline PDFs:
+[`COMPLIANCE.md`](docs/COMPLIANCE.md). Diagrams are Mermaid sources in `docs/diagrams/*.mmd`
+with rendered `.png`/`.svg` next to them (edit the `.mmd`, re-render at https://mermaid.live).
+
+**Reproducibility drill** (Git commit + MLflow run ID → identical metrics):
+```bash
+docker compose up -d mlflow
+make repro-drill                  # or: python scripts/repro_drill.py --commit day10
+```
+It clones the repository into a temporary folder, checks out the commit, decrypts `.env`,
+`dvc pull`s that commit's data, retrains with `mlflow run . -e train_lstm`, evaluates, and
+writes [`docs/REPRODUCIBILITY.md`](docs/REPRODUCIBILITY.md) with both run IDs and the metric
+comparison. About 5 minutes; your working copy is not touched.
 
 ---
 

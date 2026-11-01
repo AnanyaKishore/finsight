@@ -1,0 +1,48 @@
+flowchart TB
+  user(["User's browser"])
+  ext["External APIs (internet)<br/>MarketStack · yfinance · Finnhub"]
+
+  subgraph HOST["Docker Compose, one laptop"]
+    direction TB
+    fe["<b>frontend</b> :8080<br/>nginx, static HTML/JS<br/>Overview · Stock · Pipeline Console"]
+    be["<b>backend</b> :8000<br/>FastAPI REST API<br/>validation · cache · degradation · /metrics"]
+
+    subgraph INF["Model inference"]
+      direction LR
+      ls["<b>lstm-serve</b> :5001<br/>MLflow serve<br/>@production LSTM"]
+      ss["<b>sentiment-serve</b> :5002<br/>MLflow serve<br/>@production sentiment"]
+    end
+
+    mongo[("<b>mongo</b> :27017<br/>prices · news · forecasts ·<br/>sentiment · portfolio · runs")]
+
+    subgraph PIPE["Pipeline and MLOps"]
+      direction LR
+      sch["<b>scheduler</b> :8001<br/>daily run · /retrain webhook<br/>drift and error monitor"]
+      dvc["<b>DVC pipeline</b><br/>tests → validate → Spark ETL →<br/>train → evaluate → gate →<br/>score sentiment → portfolio"]
+      mlf["<b>mlflow</b> :5000<br/>tracking + registry"]
+      repo[("Git + local DVC remote<br/>code · data · models")]
+    end
+
+    subgraph MON["Monitoring"]
+      direction LR
+      exp["exporters<br/>node · cAdvisor · mongodb · nginx"]
+      prom["<b>prometheus</b> :9090<br/>scrape · alert rules"]
+      am["<b>alertmanager</b> :9093"]
+      graf["<b>grafana</b> :3000<br/>5 dashboards"]
+    end
+  end
+
+  user -->|"1 · page"| fe
+  user -->|"2 · REST/JSON, base URL in config.js"| be
+  be -->|"3 · POST /invocations"| ls & ss
+  be <-->|"4"| mongo
+  ext -->|"5 · ingest"| sch
+  sch -->|"6 · dvc repro"| dvc
+  sch --> mongo
+  dvc <--> repo
+  dvc -->|"7 · runs, model versions"| mlf
+  mlf -.->|"8 · @production alias"| ls & ss
+  prom -->|"9 · scrape /metrics"| exp & be & sch
+  prom -->|"10 · alert"| am
+  am -->|"11 · retrain webhook"| sch
+  graf --> prom

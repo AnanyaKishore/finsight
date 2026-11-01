@@ -1,0 +1,23 @@
+sequenceDiagram
+  autonumber
+  participant S as scheduler
+  participant X as MarketStack / Finnhub
+  participant M as MongoDB
+  participant D as DVC pipeline
+  participant F as MLflow registry
+  participant B as backend
+  participant L as lstm-serve
+  Note over S: 06:30 IST, Tue–Sat (or catch-up after sleep)
+  S->>X: incremental fetch (quota ledger, retries)
+  X-->>S: new bars + articles
+  S->>M: upsert (unique keys, idempotent)
+  S->>D: dvc repro process (unit tests → export → validate → Spark ETL)
+  Note over D: a failed test or blocking data-quality check stops the run here
+  S->>D: dvc repro score_sentiment, optimize_portfolio
+  D->>M: weekly sentiment, portfolio
+  S->>B: GET /api/prediction/{t} for the 10 stocks
+  B->>L: POST /invocations (last 100 prices)
+  L-->>B: 14-day forecast
+  B->>M: store forecast (served from cache all day)
+  S->>S: monitor: drift (PSI), live error vs naive, freshness → gauges
+  S->>D: dvc push · git commit dvc.lock + reports (local)

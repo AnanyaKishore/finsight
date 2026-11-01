@@ -1,0 +1,28 @@
+sequenceDiagram
+  autonumber
+  participant P as Prometheus
+  participant A as Alertmanager
+  participant S as scheduler
+  participant D as DVC pipeline
+  participant G as promotion gate
+  participant F as MLflow registry
+  participant L as lstm-serve
+  S->>P: /metrics: finsight_returns_drift_detected = 1 (≥ 30 % of stocks PSI > 0.25)
+  P->>P: rule ReturnsDriftDetected holds for 5 min
+  P->>A: alert (action = retrain)
+  A->>S: POST /retrain (bearer token)
+  alt within 24 h of the last retrain
+    S-->>A: 200 ignored (cooldown)
+  else a daily run is busy
+    S-->>A: 202 queued, starts when the run ends
+  else idle
+    S-->>A: 202 run started
+    S->>D: dvc repro (train_lstm → evaluate_lstm → register)
+    D->>G: challenger metrics vs champion, same test windows
+    alt challenger better and accepted (MAPE ≤ 1.02 × naive)
+      G->>F: move @production to the new version
+      F-->>L: alias moved → server restarts with the new model
+    else not better
+      G->>F: keep the current @production
+    end
+  end

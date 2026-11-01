@@ -148,7 +148,7 @@ metrics, stored forecasts, graceful degradation), `docs/LLD.md` + `docs/api/open
 - Security: Fernet-encrypted `secrets/.env.enc` (key outside Git), Mongo auth, localhost-only ports, non-root containers, encrypted exported snapshots / model artifacts at rest.
 - Pre-commit hooks; final coverage report → `docs/TEST_REPORT.md` (passed/failed counts).
 
-### Day 10 — Fri 30 Oct · Documentation + reproducibility drill
+### Day 10 — Fri 30 Oct · Documentation + reproducibility drill ✅ (done 1 Nov)
 - `ARCHITECTURE.md` (diagram + block explanations), `HLD.md`, `LLD.md`, `USER_MANUAL.md` (screenshots, non-technical), README.
 - Reproducibility drill (as in q4demo): fresh clone → `git checkout <commit>` → `dvc pull` → `mlflow run` → identical metrics; record commit hash + run ID.
 
