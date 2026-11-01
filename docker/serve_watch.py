@@ -1,17 +1,16 @@
-"""Serve the @production model and restart when @production moves (Day 7).
+"""Serve the @production model and restart when @production moves
 
-``mlflow models serve`` loads a model once, at start-up. After the promotion
+mlflow models serve loads a model once, at start-up. After the promotion
 gate (or a rollback) moves ``@production`` to another version, the container
 would keep serving the old one until someone restarted it. This wrapper:
 
-1. resolves ``models:/<name>@<alias>`` to a concrete version,
-2. runs ``mlflow models serve`` on exactly that version,
-3. checks the alias every ``WATCH_INTERVAL_S`` seconds (default 60), and
-4. exits when the alias points elsewhere -- compose's ``restart:
-   unless-stopped`` then starts the container again, which loads the new model.
+1. resolves models:/<name>@<alias> to a concrete version,
+2. runs mlflow models serve on exactly that version,
+3. checks the alias every WATCH_INTERVAL_S seconds (default 60), and
+4. exits when the alias points elsewhere -- compose's restart: unless-stopped
+then starts the container again, which loads the new model.
 
-If the registry is unreachable, it keeps serving what it has (graceful
-degradation) and checks again later. It also exits if the server process dies,
+If the registry is unreachable, it keeps serving what it has and checks again later. It also exits if the server process dies,
 so the container restarts instead of sitting there broken.
 """
 

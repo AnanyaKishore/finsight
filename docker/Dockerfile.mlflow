@@ -11,7 +11,7 @@
 FROM python:3.11-slim-bookworm
 # MLFLOW_SERVER_ENABLE_JOB_EXECUTION=false: MLflow 3 otherwise starts a job
 # runner + 7 huey worker processes (~1.2 GB) for GenAI evaluation / trace
-# jobs we do not use. Measured: 1.7 GB -> ~0.5 GB (8 GB laptop budget).
+
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_DEFAULT_TIMEOUT=120 PIP_RETRIES=10 PYTHONUNBUFFERED=1 \
     MLFLOW_DISABLE_AGENT_HINT=1 \
     MLFLOW_SERVER_ENABLE_JOB_EXECUTION=false

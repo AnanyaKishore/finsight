@@ -1,8 +1,4 @@
-# --------------------------------------------------------------------------- #
-# FinSight backend image (FastAPI + uvicorn). Small on purpose: no pandas,
-# torch or Spark -- the backend reads MongoDB and calls the model servers.
-# --------------------------------------------------------------------------- #
-
+# backend reads MongoDB and calls the model servers. uses fastapi, unicorn, and no pandas, torch or Spark
 # ---------- Stage 1: builder ----------
 FROM python:3.11-slim-bookworm AS builder
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_DEFAULT_TIMEOUT=120 PIP_RETRIES=10

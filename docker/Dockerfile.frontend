@@ -1,11 +1,5 @@
-# --------------------------------------------------------------------------- #
-# FinSight portal image: static HTML/CSS/JS served by nginx (no build step,
-# no Node.js). The backend URL is runtime configuration: config.js is generated
-# from BACKEND_URL when the container starts, so one image serves any backend.
-#
-# Base image: nginx-unprivileged runs as uid 101 and listens on 8080, so the
-# container never runs as root.
-# --------------------------------------------------------------------------- #
+# frontend portal serves using nginx, so no build step
+# config.js is generated from BACKEND_URL when the container starts, so one image serves any backend
 FROM nginxinc/nginx-unprivileged:1.28-alpine
 LABEL org.opencontainers.image.title="finsight-frontend" \
       org.opencontainers.image.description="FinSight web portal"
@@ -17,18 +11,16 @@ ENV BACKEND_URL=http://localhost:8000 \
     GRAFANA_UI_URL=http://localhost:3000 \
     ALERTMANAGER_UI_URL=http://localhost:9093
 
-# Two worker processes are plenty for one user; the default ("auto") starts
-# one per CPU core (12 on the target laptop) for no benefit.
+# 2 worker processes is enough for a user; the default ("auto") starts one per CPU core
 USER root
 RUN sed -i 's/^worker_processes.*/worker_processes 2;/' /etc/nginx/nginx.conf
 USER nginx
 
-# The template replaces the image's default site (envsubst -> conf.d/default.conf).
+# The template replaces the image's default site (envsubst -> conf.d/default.conf)
 COPY frontend/nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --chmod=755 frontend/nginx/15-finsight-check-env.sh /docker-entrypoint.d/15-finsight-check-env.sh
 
-# The site itself. config.js in the repo is only for local development
-# (python -m http.server); in the container nginx generates it instead.
+# the site; config.js in the repo is only for local development (python -m http.server); in the container nginx generates it instead
 COPY frontend/index.html frontend/help.html /usr/share/nginx/html/
 COPY frontend/assets/ /usr/share/nginx/html/assets/
 

@@ -1,11 +1,4 @@
-# The fixed universe of ~10 large-cap US equities analysed by FinSight.
-# Same universe as the MLOps_AI_App baseline (stock_data_config.py), so the
-# baseline's design and diagrams remain comparable.
-#
-#   symbol   : exchange ticker used by MarketStack / Finnhub / yfinance
-#   name     : display name shown in the UI and used by /api/search
-#   aliases  : extra search keywords for the type-ahead box (lower case)
-#   sector   : informational only (shown in the overview card)
+# The fixed universe of ~10 large-cap US equities analysed here. aliases: extra lowercase search keywords for the type-ahead box
 tickers:
   - { symbol: AAPL,  name: Apple,          aliases: [apple, iphone],             sector: Technology }
   - { symbol: MSFT,  name: Microsoft,      aliases: [microsoft, windows, azure], sector: Technology }

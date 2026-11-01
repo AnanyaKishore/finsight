@@ -6,6 +6,10 @@ secrets/.env
 # Encrypted snapshots stay on this machine (copy them to a USB drive yourself).
 /backups/
 
+DEMO_SCRIPT.md
+VIVA_PREP.md
+COMPLIANCE.md
+
 # ---- DVC-managed outputs (tracked through dvc.lock / .dvc files instead) ----
 /data/*
 !/data/.gitkeep
