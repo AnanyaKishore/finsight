@@ -9,6 +9,12 @@ secrets/.env
 DEMO_SCRIPT.md
 VIVA_PREP.md
 COMPLIANCE.md
+.env.example
+.pre-commit-config.yaml
+Makefile
+tests/
+secrets/
+pyproject.toml
 
 # ---- DVC-managed outputs (tracked through dvc.lock / .dvc files instead) ----
 /data/*

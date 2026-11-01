@@ -1,4 +1,3 @@
-# Keep the Docker build context small and free of secrets.
 # Images copy only src/, configs/, params.yaml and requirements/.
 .env
 .env.*
