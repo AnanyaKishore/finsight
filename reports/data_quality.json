@@ -310,7 +310,7 @@
     {
       "details": null,
       "name": "news.summary_present_fraction",
-      "observed": 0.9902,
+      "observed": 0.9903,
       "severity": "info",
       "success": true
     }
@@ -325,7 +325,7 @@
         "2026-06-10"
       ],
       "missing_trading_days": 2,
-      "news_articles": 1365,
+      "news_articles": 1385,
       "news_thin_weeks": 0,
       "news_weeks": 28,
       "outlier_days": 1,
@@ -349,7 +349,7 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1434,
+      "news_articles": 1449,
       "news_thin_weeks": 0,
       "news_weeks": 27,
       "outlier_days": 1,
@@ -372,7 +372,7 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1428,
+      "news_articles": 1448,
       "news_thin_weeks": 0,
       "news_weeks": 27,
       "outlier_days": 1,
@@ -395,7 +395,7 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1220,
+      "news_articles": 1224,
       "news_thin_weeks": 0,
       "news_weeks": 28,
       "outlier_days": 0,
@@ -417,7 +417,7 @@
         "2026-06-10"
       ],
       "missing_trading_days": 2,
-      "news_articles": 1439,
+      "news_articles": 1459,
       "news_thin_weeks": 0,
       "news_weeks": 27,
       "outlier_days": 1,
@@ -441,7 +441,7 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1415,
+      "news_articles": 1436,
       "news_thin_weeks": 0,
       "news_weeks": 27,
       "outlier_days": 2,
@@ -464,7 +464,7 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1491,
+      "news_articles": 1521,
       "news_thin_weeks": 0,
       "news_weeks": 27,
       "outlier_days": 0,
@@ -487,7 +487,7 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1390,
+      "news_articles": 1406,
       "news_thin_weeks": 0,
       "news_weeks": 28,
       "outlier_days": 0,
@@ -510,7 +510,7 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1220,
+      "news_articles": 1221,
       "news_thin_weeks": 0,
       "news_weeks": 28,
       "outlier_days": 1,
@@ -533,7 +533,7 @@
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1220,
+      "news_articles": 1226,
       "news_thin_weeks": 0,
       "news_weeks": 28,
       "outlier_days": 1,

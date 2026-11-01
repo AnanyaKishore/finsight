@@ -6,7 +6,7 @@
   "weight_step": 0.1,
   "risk_free_rate": 0.039,
   "grid_size": 92378,
-  "grid_seconds": 0.086,
+  "grid_seconds": 0.081,
   "fallback_used": false,
   "allocation": {
     "method": "max_sharpe",

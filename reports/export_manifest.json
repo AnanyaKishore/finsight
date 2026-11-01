@@ -2,11 +2,11 @@
   "news": {
     "date_range": [
       "2026-04-22",
-      "2026-10-31"
+      "2026-11-01"
     ],
     "path": "data/raw/news.parquet",
-    "rows": 13622,
-    "sha256": "f821e288de71c220aabd75c382be8830ab551886f09408738af9aabe1eba0f6a",
+    "rows": 13775,
+    "sha256": "70245ba1741036bb6141ba2707cf9173f933333c765271a0d95b1374f17e6736",
     "tickers": 10
   },
   "prices": {
