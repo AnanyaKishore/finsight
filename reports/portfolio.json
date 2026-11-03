@@ -1,14 +1,14 @@
 {
-  "as_of": "2026-10-30",
+  "as_of": "2026-11-02",
   "method": "max_sharpe",
-  "sharpe": 7.74677,
-  "expected_return": 0.983413,
-  "volatility": 0.121911,
-  "equal_weight_sharpe": -0.164739,
-  "grid_sharpe_gap": 0.035262,
-  "oos_sharpe_max_sharpe": 0.050415,
-  "oos_sharpe_equal_weight": 0.459345,
-  "oos_sharpe_min_volatility": 0.138636,
+  "sharpe": 7.923792,
+  "expected_return": 1.044787,
+  "volatility": 0.126932,
+  "equal_weight_sharpe": -1.650405,
+  "grid_sharpe_gap": 0.041976,
+  "oos_sharpe_max_sharpe": 0.117519,
+  "oos_sharpe_equal_weight": 0.477246,
+  "oos_sharpe_min_volatility": 0.177636,
   "oos_beats_equal_weight": false,
-  "run_id": "29ab68b2f6a94d0891a30a3fc3f335ec"
+  "run_id": "45081ec8ba9845eabb7f27d62722f306"
 }
