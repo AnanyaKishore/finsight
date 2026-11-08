@@ -1,67 +1,67 @@
 {
-  "as_of": "2026-11-02",
-  "window_start": "2026-09-22",
-  "window_end": "2026-11-02",
+  "as_of": "2026-11-06",
+  "window_start": "2026-09-28",
+  "window_end": "2026-11-06",
   "window_days": 30,
   "weight_step": 0.1,
   "risk_free_rate": 0.039,
   "grid_size": 92378,
-  "grid_seconds": 0.068,
+  "grid_seconds": 0.088,
   "fallback_used": false,
   "allocation": {
     "method": "max_sharpe",
     "weights": {
       "AAPL": 0.0,
-      "AMZN": 0.0,
+      "AMZN": 0.1,
       "GOOGL": 0.0,
       "JPM": 0.0,
       "META": 0.0,
-      "MSFT": 0.2,
+      "MSFT": 0.0,
       "NVDA": 0.0,
-      "TSLA": 0.1,
-      "V": 0.3,
-      "WMT": 0.4
+      "TSLA": 0.0,
+      "V": 0.4,
+      "WMT": 0.5
     },
-    "expected_return": 1.044787,
-    "volatility": 0.126932,
-    "sharpe": 7.923792
+    "expected_return": 1.17303,
+    "volatility": 0.213548,
+    "sharpe": 5.310417
   },
   "in_sample": {
     "max_sharpe": {
       "method": "max_sharpe",
       "weights": {
         "AAPL": 0.0,
-        "AMZN": 0.0,
+        "AMZN": 0.1,
         "GOOGL": 0.0,
         "JPM": 0.0,
         "META": 0.0,
-        "MSFT": 0.2,
+        "MSFT": 0.0,
         "NVDA": 0.0,
-        "TSLA": 0.1,
-        "V": 0.3,
-        "WMT": 0.4
+        "TSLA": 0.0,
+        "V": 0.4,
+        "WMT": 0.5
       },
-      "expected_return": 1.044787,
-      "volatility": 0.126932,
-      "sharpe": 7.923792
+      "expected_return": 1.17303,
+      "volatility": 0.213548,
+      "sharpe": 5.310417
     },
     "min_volatility": {
       "method": "min_volatility",
       "weights": {
-        "AAPL": 0.3,
+        "AAPL": 0.2,
         "AMZN": 0.0,
         "GOOGL": 0.1,
-        "JPM": 0.2,
+        "JPM": 0.0,
         "META": 0.1,
         "MSFT": 0.0,
-        "NVDA": 0.1,
+        "NVDA": 0.2,
         "TSLA": 0.0,
         "V": 0.0,
-        "WMT": 0.2
+        "WMT": 0.4
       },
-      "expected_return": -0.203532,
-      "volatility": 0.083222,
-      "sharpe": -2.914283
+      "expected_return": -0.080477,
+      "volatility": 0.146516,
+      "sharpe": -0.815451
     },
     "equal_weight": {
       "method": "equal_weight",
@@ -77,60 +77,60 @@
         "V": 0.1,
         "WMT": 0.1
       },
-      "expected_return": -0.164002,
-      "volatility": 0.123001,
-      "sharpe": -1.650405
+      "expected_return": -0.179655,
+      "volatility": 0.191056,
+      "sharpe": -1.144456
     }
   },
   "continuous_check": {
-    "sharpe": 7.965768,
-    "grid_sharpe_gap": 0.041976,
+    "sharpe": 5.313998,
+    "grid_sharpe_gap": 0.003581,
     "weights": {
       "AAPL": 0.0,
-      "AMZN": 0.0,
+      "AMZN": 0.082,
       "GOOGL": 0.0,
       "JPM": 0.0,
       "META": 0.0,
-      "MSFT": 0.1434,
+      "MSFT": 0.0,
       "NVDA": 0.0,
-      "TSLA": 0.127,
-      "V": 0.3316,
-      "WMT": 0.398
+      "TSLA": 0.0,
+      "V": 0.4371,
+      "WMT": 0.4809
     }
   },
   "walk_forward": {
     "rebalance_days": 5,
-    "rebalances": 46,
+    "rebalances": 47,
     "first_day": "2025-12-04",
-    "last_day": "2026-11-02",
+    "last_day": "2026-11-06",
     "performance": {
       "max_sharpe": {
-        "annual_return": 0.044761,
-        "annual_volatility": 0.184276,
-        "sharpe": 0.117519,
-        "total_return": 0.040594,
+        "annual_return": 0.040056,
+        "annual_volatility": 0.191885,
+        "sharpe": 0.096641,
+        "total_return": 0.036981,
         "max_drawdown": -0.154737,
-        "days": 229
+        "days": 233
       },
       "min_volatility": {
-        "annual_return": 0.055695,
-        "annual_volatility": 0.142721,
-        "sharpe": 0.177636,
-        "total_return": 0.050485,
+        "annual_return": 0.04497,
+        "annual_volatility": 0.149953,
+        "sharpe": 0.107988,
+        "total_return": 0.04151,
         "max_drawdown": -0.117415,
-        "days": 229
+        "days": 233
       },
       "equal_weight": {
-        "annual_return": 0.108703,
-        "annual_volatility": 0.161895,
-        "sharpe": 0.477246,
-        "total_return": 0.09831,
+        "annual_return": 0.096048,
+        "annual_volatility": 0.16894,
+        "sharpe": 0.396357,
+        "total_return": 0.088495,
         "max_drawdown": -0.140161,
-        "days": 229
+        "days": 233
       }
     },
     "turnover": {
-      "max_sharpe": 0.3467,
+      "max_sharpe": 0.35,
       "min_volatility": 0.2,
       "equal_weight": 0.0
     },
@@ -917,6 +917,23 @@
         "TSLA": 0.2,
         "V": 0.2,
         "WMT": 0.3
+      }
+    },
+    {
+      "date": "2026-11-04",
+      "in_sample_sharpe": 7.2874,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.0,
+        "GOOGL": 0.0,
+        "JPM": 0.0,
+        "META": 0.0,
+        "MSFT": 0.3,
+        "NVDA": 0.0,
+        "TSLA": 0.0,
+        "V": 0.5,
+        "WMT": 0.2
       }
     }
   ]
