@@ -1,9 +1,9 @@
 # FinSight developer shortcuts. Every target is a thin wrapper around a command
-# documented in README.md, so nothing here is "magic".
+# documented in docs/RUNBOOK.md, so nothing here is "magic".
 # Load .env (if present) so targets can use the same variables as compose.
 -include .env
 export
-.PHONY: help install lint format test test-int up down mongo-shell ingest-plan backfill incremental status build repro dag eda benchmark train plots sentiment portfolio feature-experiment mlflow-ui register serve api-dev rollback-lstm frontend web-dev scheduler run-now retrain-now monitoring dashboards drill-start drill-stop rules-test e2e load-test test-report secrets-key secrets-encrypt secrets-decrypt secrets-check backup backup-models verify-backup pre-commit audit repro-drill preflight
+.PHONY: help install lint format test test-int up down mongo-shell ingest-plan backfill incremental status build repro dag eda benchmark train plots sentiment portfolio feature-experiment mlflow-ui register serve api-dev rollback-lstm frontend web-dev scheduler run-now retrain-now monitoring dashboards drill-start drill-stop rules-test e2e load-test test-report secrets-key secrets-encrypt secrets-decrypt secrets-check backup backup-models verify-backup pre-commit audit repro-drill preflight repo-check repo-clean
 
 help:            ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*## "}{printf "  %-20s %s\n",$$1,$$2}'
@@ -164,3 +164,10 @@ repro-drill:     ## fresh clone -> dvc pull -> mlflow run -> same metrics? -> do
 # ---- Day 11: demo readiness -------------------------------------------------
 preflight:       ## is the running stack ready to demo? (containers, models, drill, alerts, next run, AC-11)
 	python scripts/preflight.py
+
+# ---- Repository hygiene -----------------------------------------------------
+repo-check:      ## list clutter: tracked files that .gitignore now excludes, caches, big or stray files (changes nothing)
+	bash scripts/repo_cleanup.sh
+
+repo-clean:      ## untrack those files (they stay on disk) and delete Python/tool caches
+	bash scripts/repo_cleanup.sh --apply

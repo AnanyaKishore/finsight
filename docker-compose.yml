@@ -271,7 +271,7 @@ services:
       - .:/app
       # The DVC remote, mounted at the SAME absolute path as on the host so the
       # url in .dvc/config works unchanged. Set DVC_REMOTE_DIR in .env.
-      - ${DVC_REMOTE_DIR:?set DVC_REMOTE_DIR in .env (see README, Day 7)}:${DVC_REMOTE_DIR}
+      - ${DVC_REMOTE_DIR:?set DVC_REMOTE_DIR in .env (see docs/RUNBOOK.md, Day 7)}:${DVC_REMOTE_DIR}
     ports:
       - "127.0.0.1:8001:8001"     # trigger API + /metrics (localhost only)
     healthcheck:
@@ -348,7 +348,7 @@ services:
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env (see README, Day 8)}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env (see docs/RUNBOOK.md, Day 8)}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/finsight-overview.json
       # Self-hosted, no cloud: no phoning home, no news feed, no plugin downloads.

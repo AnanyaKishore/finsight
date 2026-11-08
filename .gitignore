@@ -1,20 +1,15 @@
 # ---- Secrets (never commit) -------------------------------------------------
 .env
+.env.*
+!.env.example
+# ...but the ENCRYPTED copy is committed on purpose (Day 9):
+!secrets/.env.enc
 *.key
+*.pem
 secrets/*.key
 secrets/.env
 # Encrypted snapshots stay on this machine (copy them to a USB drive yourself).
 /backups/
-
-DEMO_SCRIPT.md
-VIVA_PREP.md
-COMPLIANCE.md
-.env.example
-.pre-commit-config.yaml
-Makefile
-tests/
-secrets/
-pyproject.toml
 
 # ---- DVC-managed outputs (tracked through dvc.lock / .dvc files instead) ----
 /data/*
@@ -31,6 +26,7 @@ pyproject.toml
 mlruns/
 mlartifacts/
 mlflow.db
+mlflow.db-journal
 
 # ---- Logs -------------------------------------------------------------------
 /logs/*
@@ -46,12 +42,16 @@ build/
 dist/
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
+.hypothesis/
+.tox/
 .coverage
 coverage.xml
 htmlcov/
 .venv/
 venv/
 .ipynb_checkpoints/
+.python-version
 
 # ---- Spark ------------------------------------------------------------------
 spark-warehouse/
@@ -63,6 +63,29 @@ derby.log
 Thumbs.db
 .idea/
 .vscode/
+*.swp
+*.swo
+*~
+desktop.ini
+# Windows download markers copied into WSL
+*:Zone.Identifier
 
 # ---- DVC plot renders (regenerate with `dvc plots show`) ----
 dvc_plots/
+
+# ---- Hand-off bundles and stray copies --------------------------------------
+# The daily update zips are unpacked over the repo; the zips themselves and any
+# merge/editor leftovers never belong in Git.
+*.zip
+*.orig
+*.rej
+*.bak
+*.tmp
+nohup.out
+/tmp/
+
+# ---- Personal prep notes and local tooling (kept on the laptop, not in Git) ----
+docs/DEMO_SCRIPT.md
+docs/VIVA_PREP.md
+docs/COMPLIANCE.md
+.pre-commit-config.yaml
