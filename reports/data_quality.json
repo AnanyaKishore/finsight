@@ -1,5 +1,5 @@
 {
-  "as_of_session": "2026-11-06",
+  "as_of_session": "2026-11-09",
   "checks": [
     {
       "details": {
@@ -174,7 +174,7 @@
     },
     {
       "details": {
-        "expected_last_session": "2026-11-06"
+        "expected_last_session": "2026-11-09"
       },
       "name": "prices.fresh",
       "observed": {},
@@ -240,7 +240,7 @@
       "details": null,
       "name": "prices.provider_mix",
       "observed": {
-        "marketstack": 2608,
+        "marketstack": 2618,
         "yfinance": 4
       },
       "severity": "info",
@@ -300,7 +300,7 @@
     {
       "details": {
         "min_articles_per_week": 5,
-        "weeks_checked": 27
+        "weeks_checked": 28
       },
       "name": "news.weekly_coverage",
       "observed": {},
@@ -317,22 +317,22 @@
   ],
   "per_ticker": {
     "AAPL": {
-      "expected_trading_days": 264,
+      "expected_trading_days": 265,
       "first_date": "2025-10-21",
-      "last_date": "2026-11-06",
+      "last_date": "2026-11-09",
       "missing_dates": [
         "2026-06-09",
         "2026-06-10"
       ],
       "missing_trading_days": 2,
-      "news_articles": 1461,
+      "news_articles": 1500,
       "news_thin_weeks": 0,
-      "news_weeks": 29,
+      "news_weeks": 30,
       "outlier_days": 1,
       "price_field": "close",
-      "return_mean": 0.001014,
-      "return_std": 0.015367,
-      "rows": 262,
+      "return_mean": 0.001102,
+      "return_std": 0.015403,
+      "rows": 263,
       "sessions_behind": 0,
       "sources": [
         "marketstack",
@@ -340,91 +340,91 @@
       ]
     },
     "AMZN": {
-      "expected_trading_days": 264,
+      "expected_trading_days": 265,
       "first_date": "2025-10-21",
-      "last_date": "2026-11-06",
+      "last_date": "2026-11-09",
       "missing_dates": [
         "2026-06-09",
         "2026-06-10",
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1528,
+      "news_articles": 1567,
       "news_thin_weeks": 0,
-      "news_weeks": 28,
+      "news_weeks": 29,
       "outlier_days": 1,
       "price_field": "adj_close",
-      "return_mean": 0.000597,
-      "return_std": 0.021816,
-      "rows": 261,
+      "return_mean": 0.000706,
+      "return_std": 0.021845,
+      "rows": 262,
       "sessions_behind": 0,
       "sources": [
         "marketstack"
       ]
     },
     "GOOGL": {
-      "expected_trading_days": 264,
+      "expected_trading_days": 265,
       "first_date": "2025-10-21",
-      "last_date": "2026-11-06",
+      "last_date": "2026-11-09",
       "missing_dates": [
         "2026-06-09",
         "2026-06-10",
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1527,
+      "news_articles": 1565,
       "news_thin_weeks": 0,
-      "news_weeks": 28,
+      "news_weeks": 29,
       "outlier_days": 1,
       "price_field": "adj_close",
-      "return_mean": 0.000494,
-      "return_std": 0.021468,
-      "rows": 261,
+      "return_mean": 0.000537,
+      "return_std": 0.021438,
+      "rows": 262,
       "sessions_behind": 0,
       "sources": [
         "marketstack"
       ]
     },
     "JPM": {
-      "expected_trading_days": 264,
+      "expected_trading_days": 265,
       "first_date": "2025-10-21",
-      "last_date": "2026-11-06",
+      "last_date": "2026-11-09",
       "missing_dates": [
         "2026-06-09",
         "2026-06-10",
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1272,
+      "news_articles": 1300,
       "news_thin_weeks": 0,
-      "news_weeks": 29,
+      "news_weeks": 30,
       "outlier_days": 0,
       "price_field": "adj_close",
-      "return_mean": 0.000456,
-      "return_std": 0.014237,
-      "rows": 261,
+      "return_mean": 0.00054,
+      "return_std": 0.014274,
+      "rows": 262,
       "sessions_behind": 0,
       "sources": [
         "marketstack"
       ]
     },
     "META": {
-      "expected_trading_days": 264,
+      "expected_trading_days": 265,
       "first_date": "2025-10-21",
-      "last_date": "2026-11-06",
+      "last_date": "2026-11-09",
       "missing_dates": [
         "2026-06-09",
         "2026-06-10"
       ],
       "missing_trading_days": 2,
-      "news_articles": 1536,
+      "news_articles": 1575,
       "news_thin_weeks": 0,
-      "news_weeks": 28,
+      "news_weeks": 29,
       "outlier_days": 1,
       "price_field": "close",
-      "return_mean": -0.000704,
-      "return_std": 0.026651,
-      "rows": 262,
+      "return_mean": -0.000511,
+      "return_std": 0.026783,
+      "rows": 263,
       "sessions_behind": 0,
       "sources": [
         "marketstack",
@@ -432,115 +432,115 @@
       ]
     },
     "MSFT": {
-      "expected_trading_days": 264,
+      "expected_trading_days": 265,
       "first_date": "2025-10-21",
-      "last_date": "2026-11-06",
+      "last_date": "2026-11-09",
       "missing_dates": [
         "2026-06-09",
         "2026-06-10",
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1513,
+      "news_articles": 1553,
       "news_thin_weeks": 0,
-      "news_weeks": 28,
+      "news_weeks": 29,
       "outlier_days": 2,
       "price_field": "adj_close",
-      "return_mean": 9.5e-05,
-      "return_std": 0.02103,
-      "rows": 261,
+      "return_mean": 0.000198,
+      "return_std": 0.021056,
+      "rows": 262,
       "sessions_behind": 0,
       "sources": [
         "marketstack"
       ]
     },
     "NVDA": {
-      "expected_trading_days": 264,
+      "expected_trading_days": 265,
       "first_date": "2025-10-21",
-      "last_date": "2026-11-06",
+      "last_date": "2026-11-09",
       "missing_dates": [
         "2026-06-09",
         "2026-06-10",
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1601,
+      "news_articles": 1641,
       "news_thin_weeks": 0,
-      "news_weeks": 28,
+      "news_weeks": 29,
       "outlier_days": 0,
       "price_field": "adj_close",
-      "return_mean": 0.000115,
-      "return_std": 0.02419,
-      "rows": 261,
+      "return_mean": -5.3e-05,
+      "return_std": 0.024295,
+      "rows": 262,
       "sessions_behind": 0,
       "sources": [
         "marketstack"
       ]
     },
     "TSLA": {
-      "expected_trading_days": 264,
+      "expected_trading_days": 265,
       "first_date": "2025-10-21",
-      "last_date": "2026-11-06",
+      "last_date": "2026-11-09",
       "missing_dates": [
         "2026-06-09",
         "2026-06-10",
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1478,
+      "news_articles": 1518,
       "news_thin_weeks": 0,
-      "news_weeks": 29,
+      "news_weeks": 30,
       "outlier_days": 0,
       "price_field": "adj_close",
-      "return_mean": -0.000814,
-      "return_std": 0.02925,
-      "rows": 261,
+      "return_mean": -0.000604,
+      "return_std": 0.029389,
+      "rows": 262,
       "sessions_behind": 0,
       "sources": [
         "marketstack"
       ]
     },
     "V": {
-      "expected_trading_days": 264,
+      "expected_trading_days": 265,
       "first_date": "2025-10-21",
-      "last_date": "2026-11-06",
+      "last_date": "2026-11-09",
       "missing_dates": [
         "2026-06-09",
         "2026-06-10",
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1271,
+      "news_articles": 1287,
       "news_thin_weeks": 0,
-      "news_weeks": 29,
+      "news_weeks": 30,
       "outlier_days": 1,
       "price_field": "adj_close",
-      "return_mean": 0.000756,
-      "return_std": 0.014205,
-      "rows": 261,
+      "return_mean": 0.000742,
+      "return_std": 0.01418,
+      "rows": 262,
       "sessions_behind": 0,
       "sources": [
         "marketstack"
       ]
     },
     "WMT": {
-      "expected_trading_days": 264,
+      "expected_trading_days": 265,
       "first_date": "2025-10-21",
-      "last_date": "2026-11-06",
+      "last_date": "2026-11-09",
       "missing_dates": [
         "2026-06-09",
         "2026-06-10",
         "2026-06-15"
       ],
       "missing_trading_days": 3,
-      "news_articles": 1294,
+      "news_articles": 1331,
       "news_thin_weeks": 0,
-      "news_weeks": 29,
+      "news_weeks": 30,
       "outlier_days": 1,
       "price_field": "adj_close",
-      "return_mean": 0.000642,
-      "return_std": 0.016826,
-      "rows": 261,
+      "return_mean": 0.000644,
+      "return_std": 0.016793,
+      "rows": 262,
       "sessions_behind": 0,
       "sources": [
         "marketstack"

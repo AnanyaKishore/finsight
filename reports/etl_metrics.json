@@ -1,20 +1,20 @@
 {
   "inputs": {
-    "news_rows": 14481,
-    "price_rows": 2612,
+    "news_rows": 14837,
+    "price_rows": 2622,
     "replicate": 1
   },
   "outputs": {
     "files": 21,
-    "news_rows": 14294,
-    "news_weekly_rows": 285,
-    "price_rows": 2640,
+    "news_rows": 14647,
+    "news_weekly_rows": 295,
+    "price_rows": 2650,
     "tickers": 10
   },
   "quality": {
     "news_removed": {
       "blank_headlines": 0,
-      "duplicate_headlines": 187,
+      "duplicate_headlines": 190,
       "duplicate_ids": 0
     },
     "price_rows_dropped": 0,
@@ -24,49 +24,49 @@
     "driver_memory": "1g",
     "master": "local[4]",
     "shuffle_partitions": 8,
-    "startup_seconds": 4.572,
+    "startup_seconds": 3.721,
     "version": "4.2.0"
   },
   "steps": [
     {
-      "rows_in": 17093,
-      "rows_out": 17093,
-      "rows_per_s": 5722.5,
-      "seconds": 2.987,
+      "rows_in": 17459,
+      "rows_out": 17459,
+      "rows_per_s": 6237.6,
+      "seconds": 2.799,
       "step": "read_snapshot"
     },
     {
-      "rows_in": 2612,
-      "rows_out": 2640,
-      "rows_per_s": 754.9,
-      "seconds": 3.46,
+      "rows_in": 2622,
+      "rows_out": 2650,
+      "rows_per_s": 889.7,
+      "seconds": 2.947,
       "step": "align_calendar"
     },
     {
-      "rows_in": 2640,
-      "rows_out": 2640,
-      "rows_per_s": 3993.9,
-      "seconds": 0.661,
+      "rows_in": 2650,
+      "rows_out": 2650,
+      "rows_per_s": 3132.4,
+      "seconds": 0.846,
       "step": "engineer_features"
     },
     {
-      "rows_in": 14481,
-      "rows_out": 14579,
-      "rows_per_s": 5913.0,
-      "seconds": 2.449,
+      "rows_in": 14837,
+      "rows_out": 14942,
+      "rows_per_s": 5744.1,
+      "seconds": 2.583,
       "step": "clean_aggregate_news"
     },
     {
-      "rows_in": 17219,
-      "rows_out": 17219,
-      "rows_per_s": 12907.8,
-      "seconds": 1.334,
+      "rows_in": 17592,
+      "rows_out": 17592,
+      "rows_per_s": 14514.9,
+      "seconds": 1.212,
       "step": "write_parquet"
     }
   ],
   "totals": {
-    "processing_seconds": 10.891,
-    "rows_in": 17093,
-    "rows_per_s": 1569.5
+    "processing_seconds": 10.387,
+    "rows_in": 17459,
+    "rows_per_s": 1680.9
   }
 }
