@@ -1,20 +1,20 @@
 {
   "inputs": {
-    "news_rows": 14837,
-    "price_rows": 2622,
+    "news_rows": 15155,
+    "price_rows": 2632,
     "replicate": 1
   },
   "outputs": {
     "files": 21,
-    "news_rows": 14647,
+    "news_rows": 14961,
     "news_weekly_rows": 295,
-    "price_rows": 2650,
+    "price_rows": 2660,
     "tickers": 10
   },
   "quality": {
     "news_removed": {
       "blank_headlines": 0,
-      "duplicate_headlines": 190,
+      "duplicate_headlines": 194,
       "duplicate_ids": 0
     },
     "price_rows_dropped": 0,
@@ -24,49 +24,49 @@
     "driver_memory": "1g",
     "master": "local[4]",
     "shuffle_partitions": 8,
-    "startup_seconds": 3.721,
+    "startup_seconds": 4.779,
     "version": "4.2.0"
   },
   "steps": [
     {
-      "rows_in": 17459,
-      "rows_out": 17459,
-      "rows_per_s": 6237.6,
-      "seconds": 2.799,
+      "rows_in": 17787,
+      "rows_out": 17787,
+      "rows_per_s": 5004.8,
+      "seconds": 3.554,
       "step": "read_snapshot"
     },
     {
-      "rows_in": 2622,
-      "rows_out": 2650,
-      "rows_per_s": 889.7,
-      "seconds": 2.947,
+      "rows_in": 2632,
+      "rows_out": 2660,
+      "rows_per_s": 722.3,
+      "seconds": 3.644,
       "step": "align_calendar"
     },
     {
-      "rows_in": 2650,
-      "rows_out": 2650,
-      "rows_per_s": 3132.4,
-      "seconds": 0.846,
+      "rows_in": 2660,
+      "rows_out": 2660,
+      "rows_per_s": 3988.0,
+      "seconds": 0.667,
       "step": "engineer_features"
     },
     {
-      "rows_in": 14837,
-      "rows_out": 14942,
-      "rows_per_s": 5744.1,
-      "seconds": 2.583,
+      "rows_in": 15155,
+      "rows_out": 15256,
+      "rows_per_s": 5899.2,
+      "seconds": 2.569,
       "step": "clean_aggregate_news"
     },
     {
-      "rows_in": 17592,
-      "rows_out": 17592,
-      "rows_per_s": 14514.9,
-      "seconds": 1.212,
+      "rows_in": 17916,
+      "rows_out": 17916,
+      "rows_per_s": 13400.1,
+      "seconds": 1.337,
       "step": "write_parquet"
     }
   ],
   "totals": {
-    "processing_seconds": 10.387,
-    "rows_in": 17459,
-    "rows_per_s": 1680.9
+    "processing_seconds": 11.771,
+    "rows_in": 17787,
+    "rows_per_s": 1511.1
   }
 }
