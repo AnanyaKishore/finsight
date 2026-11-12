@@ -1,12 +1,12 @@
 {
-  "as_of": "2026-11-10",
-  "window_start": "2026-09-30",
-  "window_end": "2026-11-10",
+  "as_of": "2026-11-11",
+  "window_start": "2026-10-01",
+  "window_end": "2026-11-11",
   "window_days": 30,
   "weight_step": 0.1,
   "risk_free_rate": 0.039,
   "grid_size": 92378,
-  "grid_seconds": 0.075,
+  "grid_seconds": 0.074,
   "fallback_used": false,
   "allocation": {
     "method": "max_sharpe",
@@ -22,9 +22,9 @@
       "V": 0.2,
       "WMT": 0.6
     },
-    "expected_return": 1.247375,
-    "volatility": 0.195623,
-    "sharpe": 6.177072
+    "expected_return": 1.425058,
+    "volatility": 0.183078,
+    "sharpe": 7.570848
   },
   "in_sample": {
     "max_sharpe": {
@@ -41,14 +41,14 @@
         "V": 0.2,
         "WMT": 0.6
       },
-      "expected_return": 1.247375,
-      "volatility": 0.195623,
-      "sharpe": 6.177072
+      "expected_return": 1.425058,
+      "volatility": 0.183078,
+      "sharpe": 7.570848
     },
     "min_volatility": {
       "method": "min_volatility",
       "weights": {
-        "AAPL": 0.2,
+        "AAPL": 0.1,
         "AMZN": 0.0,
         "GOOGL": 0.1,
         "JPM": 0.0,
@@ -57,11 +57,11 @@
         "NVDA": 0.2,
         "TSLA": 0.0,
         "V": 0.0,
-        "WMT": 0.4
+        "WMT": 0.5
       },
-      "expected_return": -0.063905,
-      "volatility": 0.147983,
-      "sharpe": -0.695387
+      "expected_return": 0.199173,
+      "volatility": 0.14791,
+      "sharpe": 1.082909
     },
     "equal_weight": {
       "method": "equal_weight",
@@ -77,61 +77,61 @@
         "V": 0.1,
         "WMT": 0.1
       },
-      "expected_return": 0.055682,
-      "volatility": 0.195642,
-      "sharpe": 0.085267
+      "expected_return": 0.120754,
+      "volatility": 0.195929,
+      "sharpe": 0.417262
     }
   },
   "continuous_check": {
-    "sharpe": 6.221465,
-    "grid_sharpe_gap": 0.044393,
+    "sharpe": 7.600112,
+    "grid_sharpe_gap": 0.029264,
     "weights": {
       "AAPL": 0.0,
-      "AMZN": 0.16,
+      "AMZN": 0.0555,
       "GOOGL": 0.0,
       "JPM": 0.0,
       "META": 0.0,
       "MSFT": 0.0,
       "NVDA": 0.0,
-      "TSLA": 0.0828,
-      "V": 0.1946,
-      "WMT": 0.5626
+      "TSLA": 0.1146,
+      "V": 0.2242,
+      "WMT": 0.6057
     }
   },
   "walk_forward": {
     "rebalance_days": 5,
-    "rebalances": 47,
+    "rebalances": 48,
     "first_day": "2025-12-04",
-    "last_day": "2026-11-10",
+    "last_day": "2026-11-11",
     "performance": {
       "max_sharpe": {
-        "annual_return": 0.042002,
-        "annual_volatility": 0.191263,
-        "sharpe": 0.106119,
-        "total_return": 0.039114,
+        "annual_return": 0.04511,
+        "annual_volatility": 0.190877,
+        "sharpe": 0.121555,
+        "total_return": 0.042186,
         "max_drawdown": -0.154737,
-        "days": 235
+        "days": 236
       },
       "min_volatility": {
-        "annual_return": 0.050064,
-        "annual_volatility": 0.150363,
-        "sharpe": 0.140445,
-        "total_return": 0.046609,
+        "annual_return": 0.061447,
+        "annual_volatility": 0.150406,
+        "sharpe": 0.212151,
+        "total_return": 0.057436,
         "max_drawdown": -0.117415,
-        "days": 235
+        "days": 236
       },
       "equal_weight": {
-        "annual_return": 0.108487,
-        "annual_volatility": 0.16932,
-        "sharpe": 0.462514,
-        "total_return": 0.100812,
+        "annual_return": 0.113988,
+        "annual_volatility": 0.169026,
+        "sharpe": 0.492327,
+        "total_return": 0.106379,
         "max_drawdown": -0.140161,
-        "days": 235
+        "days": 236
       }
     },
     "turnover": {
-      "max_sharpe": 0.35,
-      "min_volatility": 0.2,
+      "max_sharpe": 0.3553,
+      "min_volatility": 0.2021,
       "equal_weight": 0.0
     },
     "beats_equal_weight_sharpe": false
@@ -934,6 +934,23 @@
         "TSLA": 0.0,
         "V": 0.5,
         "WMT": 0.2
+      }
+    },
+    {
+      "date": "2026-11-11",
+      "in_sample_sharpe": 6.1771,
+      "fallback_used": false,
+      "weights": {
+        "AAPL": 0.0,
+        "AMZN": 0.1,
+        "GOOGL": 0.0,
+        "JPM": 0.0,
+        "META": 0.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0,
+        "TSLA": 0.1,
+        "V": 0.2,
+        "WMT": 0.6
       }
     }
   ]
