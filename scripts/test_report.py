@@ -466,7 +466,7 @@ def write_reports(
             "",
             "## 5. Notes",
             "",
-            "From [TEST_NOTES.md](TEST_NOTES.md), written by hand.",
+            "Written by hand.",
             *body,
         ]
     (ROOT / "TEST_REPORT.md").write_text(
