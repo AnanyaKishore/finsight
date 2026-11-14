@@ -1,9 +1,8 @@
 # FinSight — High-Level Design (HLD)
 
 This document explains **what** FinSight does, **how it is put together**, and **why** each
-major choice was made. Block-by-block detail is in [ARCHITECTURE.md](ARCHITECTURE.md), the
-interface contract in [LLD.md](LLD.md), and every smaller decision (with the evidence that
-led to it) in [DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md).
+major choice was made. Block-by-block detail is in [ARCHITECTURE.md](ARCHITECTURE.md), and the
+interface contract in [LLD.md](LLD.md).
 
 ---
 
@@ -159,7 +158,7 @@ CI DAG: [dvc_dag.png](docs/diagrams/dvc_dag.png).
 | Quality | Design response | Evidence |
 |---|---|---|
 | **Performance** | Forecasts computed once per stock per day and cached; reads are indexed MongoDB queries; static frontend | p95 17 ms at 10 users (AC-08) |
-| **Scalability** | Spark ETL scales with data volume (benchmarked at 1×/10×/50×); stateless backend can run more replicas; model servers are separate and can scale independently | `reports/etl_benchmark.json`; [DESIGN_DECISIONS](docs/DESIGN_DECISIONS.md) Day 2 |
+| **Scalability** | Spark ETL scales with data volume (benchmarked at 1×/10×/50×); stateless backend can run more replicas; model servers are separate and can scale independently | `reports/etl_benchmark.json` |
 | **Reliability** | Retries with back-off and jitter; idempotent writes; per-step timeouts; partial runs; graceful degradation (stale forecast, then 503); catch-up after sleep; health checks and restart policies | e2e and unit tests; AC-11 |
 | **Security** | See LLD §8b: localhost-only ports, authenticated MongoDB, non-root containers, tokens on control endpoints, CORS, CSP, encrypted secrets and backups | `tests/unit/test_security.py`, AC-01 |
 | **Observability** | JSON logs with request/run IDs; Prometheus metrics from every component; alert rules; dashboards | Grafana, Prometheus targets (e2e) |

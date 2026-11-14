@@ -116,8 +116,7 @@ into [TEST_CASES.md](TEST_CASES.md). Highlights by area:
 
 A failing test blocks the commit (pre-commit runs lint; `make test` before pushing).
 A failure found on the running stack is reproduced in a unit or e2e test first, then
-fixed; the fix and the test go in the same commit, and design changes are recorded in
-`docs/DESIGN_DECISIONS.md`.
+fixed; the fix and the test go in the same commit.
 
 ## 8. How to run everything
 

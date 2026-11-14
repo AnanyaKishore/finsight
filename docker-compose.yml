@@ -16,7 +16,7 @@
 #   node-exporter, cadvisor, mongodb-exporter, nginx-exporter                    (Day 8)
 #
 # Memory budget (8 GB laptop): every service gets an explicit mem_limit so the
-# full stack stays under ~5 GB. See docs/PROJECT_PLAN.md, "Resource budget".
+# full stack stays under ~5 GB.
 # =========================================================================== #
 
 name: finsight

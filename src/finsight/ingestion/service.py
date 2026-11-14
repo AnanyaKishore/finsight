@@ -1,6 +1,6 @@
 """Ingestion orchestration: plan -> fetch -> upsert -> record.
 
-Design notes (also summarised in docs/DESIGN_DECISIONS.md):
+Design notes:
 
 * **One code path for backfill and daily runs.** ``incremental`` gap-fills
   from each ticker's last stored date, and falls back to the full backfill

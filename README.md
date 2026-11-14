@@ -109,8 +109,6 @@ _Monitoring closes the loop: drift or error alert, retrain, promote only if bett
 | [TEST_PLAN.md](TEST_PLAN.md), [TEST_CASES.md](TEST_CASES.md), [TEST_REPORT.md](TEST_REPORT.md) | Test plan, acceptance criteria, latest results |
 | [USER_MANUAL.md](USER_MANUAL.md) | How to use the portal (non-technical) |
 | [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) | Retraining from a commit gives identical metrics |
-| [DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md) | Every deviation from the proposal, with its reason |
-| [PROJECT_PLAN.md](docs/PROJECT_PLAN.md) | Plan, memory budget and risks |
 
 ## Getting Started
 
