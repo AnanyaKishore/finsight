@@ -1,94 +1,94 @@
 {
-  "generated_at": "2026-10-31T15:22:31+00:00",
+  "generated_at": "2026-11-14T11:51:36+00:00",
   "base_url": "http://localhost:8000",
   "users": 10,
   "duration_s": 60,
   "overall": {
-    "requests": 3750,
+    "requests": 3733,
     "errors": 0,
     "error_rate": 0.0,
-    "p50_ms": 8.7,
-    "p95_ms": 16.9,
-    "p99_ms": 25.2,
-    "mean_ms": 10.6,
-    "max_ms": 573.9,
-    "throughput_rps": 62.3
+    "p50_ms": 9.2,
+    "p95_ms": 17.4,
+    "p99_ms": 25.4,
+    "mean_ms": 11.2,
+    "max_ms": 615.9,
+    "throughput_rps": 62.0
   },
   "routes": {
     "/api/portfolio": {
-      "requests": 311,
+      "requests": 309,
       "errors": 0,
       "error_rate": 0.0,
-      "p50_ms": 6.9,
-      "p95_ms": 11.4,
-      "p99_ms": 22.2,
-      "mean_ms": 8.6,
-      "max_ms": 435.1
+      "p50_ms": 7.0,
+      "p95_ms": 12.1,
+      "p99_ms": 18.6,
+      "mean_ms": 9.3,
+      "max_ms": 615.4
     },
     "/api/prediction/{ticker}": {
       "requests": 944,
       "errors": 0,
       "error_rate": 0.0,
-      "p50_ms": 11.0,
-      "p95_ms": 17.8,
-      "p99_ms": 22.7,
-      "mean_ms": 11.3,
-      "max_ms": 59.5
+      "p50_ms": 11.2,
+      "p95_ms": 18.5,
+      "p99_ms": 27.1,
+      "mean_ms": 13.0,
+      "max_ms": 606.7
     },
     "/api/search": {
-      "requests": 586,
+      "requests": 582,
       "errors": 0,
       "error_rate": 0.0,
-      "p50_ms": 5.5,
-      "p95_ms": 9.5,
-      "p99_ms": 13.7,
-      "mean_ms": 6.4,
-      "max_ms": 390.7
+      "p50_ms": 5.6,
+      "p95_ms": 9.8,
+      "p99_ms": 16.7,
+      "mean_ms": 6.8,
+      "max_ms": 605.3
     },
     "/api/sentiment/{ticker}": {
-      "requests": 595,
+      "requests": 592,
       "errors": 0,
       "error_rate": 0.0,
-      "p50_ms": 8.8,
-      "p95_ms": 15.7,
-      "p99_ms": 21.7,
-      "mean_ms": 9.9,
-      "max_ms": 410.6
+      "p50_ms": 8.9,
+      "p95_ms": 15.1,
+      "p99_ms": 22.2,
+      "mean_ms": 10.4,
+      "max_ms": 610.1
     },
     "/api/stock/{ticker}": {
-      "requests": 992,
+      "requests": 988,
       "errors": 0,
       "error_rate": 0.0,
-      "p50_ms": 10.5,
-      "p95_ms": 20.1,
-      "p99_ms": 31.7,
-      "mean_ms": 13.6,
-      "max_ms": 573.9
+      "p50_ms": 11.4,
+      "p95_ms": 19.8,
+      "p99_ms": 27.0,
+      "mean_ms": 14.4,
+      "max_ms": 615.9
     },
     "/api/stocks": {
-      "requests": 322,
+      "requests": 318,
       "errors": 0,
       "error_rate": 0.0,
-      "p50_ms": 5.4,
-      "p95_ms": 8.8,
-      "p99_ms": 50.1,
-      "mean_ms": 9.8,
-      "max_ms": 561.9
+      "p50_ms": 5.6,
+      "p95_ms": 9.8,
+      "p99_ms": 12.8,
+      "mean_ms": 7.6,
+      "max_ms": 602.9
     }
   },
   "model_endpoint": {
     "requests": 10,
     "errors": 0,
     "error_rate": 0.0,
-    "p50_ms": 45.6,
-    "p95_ms": 88.6,
-    "p99_ms": 88.6,
-    "mean_ms": 51.3,
-    "max_ms": 88.6
+    "p50_ms": 44.4,
+    "p95_ms": 67.4,
+    "p99_ms": 67.4,
+    "mean_ms": 47.3,
+    "max_ms": 67.4
   },
   "acceptance": {
     "cached_p95_ms": {
-      "value": 16.9,
+      "value": 17.4,
       "target": "< 300",
       "pass": true
     },
@@ -98,7 +98,7 @@
       "pass": true
     },
     "model_p95_ms": {
-      "value": 88.6,
+      "value": 67.4,
       "target": "< 2000",
       "pass": true
     }
