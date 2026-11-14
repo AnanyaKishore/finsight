@@ -65,7 +65,7 @@ Principles:
 passes, and for e2e/load the stack is up and `/api/health` reports every dependency ok.
 
 **Exit** (the change is ready): all acceptance criteria below are **PASS** in a fresh
-`docs/TEST_REPORT.md`, or any that are not are explained in the report's notes. A
+`TEST_REPORT.md`, or any that are not are explained in the report's notes. A
 skipped test is allowed only for an optional library that is not installed on that
 machine (the report lists every skip and its reason).
 

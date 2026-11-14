@@ -1,5 +1,5 @@
 # FinSight developer shortcuts. Every target is a thin wrapper around a command
-# documented in docs/RUNBOOK.md, so nothing here is "magic".
+# listed by `make help`, so nothing here is "magic".
 # Load .env (if present) so targets can use the same variables as compose.
 -include .env
 export
@@ -158,7 +158,7 @@ audit:           ## known vulnerabilities in the installed Python packages (need
 	pip-audit -r requirements/base.txt
 
 # ---- Day 10: reproducibility ------------------------------------------------
-repro-drill:     ## fresh clone -> dvc pull -> mlflow run -> same metrics? -> docs/REPRODUCIBILITY.md
+repro-drill:     ## fresh clone -> dvc pull -> mlflow run -> same metrics? -> REPRODUCIBILITY.md
 	python scripts/repro_drill.py
 
 # ---- Day 11: demo readiness -------------------------------------------------

@@ -226,7 +226,7 @@ def check_resources() -> Result:
     if available is not None and available < MIN_FREE_MEMORY_GB:
         return "WARN", text + "  →  close the browser tabs and apps you don't need"
     if disk < MIN_FREE_DISK_GB:
-        return "WARN", text + "  →  see docs/RUNBOOK.md 'Freeing disk space'"
+        return "WARN", text + "  →  run docker builder prune -af and dvc gc -w -f"
     return "PASS", text
 
 

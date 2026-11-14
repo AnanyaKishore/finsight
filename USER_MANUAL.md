@@ -26,7 +26,7 @@ The overview page opens. If it says the server cannot be reached, see section 6.
 
 ## 2. The overview page
 
-![Overview page](docs/images/manual/01-overview.png)
+![Overview page](assets/manual/01-overview.png)
 
 What you see, from top to bottom:
 
@@ -44,7 +44,7 @@ Prices are end-of-day closing prices, not live prices.
 
 ## 3. Finding a stock
 
-![Search](docs/images/manual/02-search.png)
+![Search](assets/manual/02-search.png)
 
 1. Click the search box, or press the **/** key.
 2. Start typing a company name ("apple"), a ticker ("AAPL") or a product ("iPhone").
@@ -54,7 +54,7 @@ If you type a stock FinSight does not cover, it says so.
 
 ## 4. The stock page
 
-![Stock page](docs/images/manual/03-stock.png)
+![Stock page](assets/manual/03-stock.png)
 
 ### 4.1 Overview
 The company name, ticker and sector, the latest closing price, and the change from the day
@@ -68,7 +68,7 @@ before.
 
 ### 4.3 14-day forecast
 
-![Forecast](docs/images/manual/04-forecast.png)
+![Forecast](assets/manual/04-forecast.png)
 
 - The **solid line** is the real closing price.
 - The **dashed line** is the model's estimate for the next 14 trading days.
@@ -80,7 +80,7 @@ before.
 
 ### 4.4 News sentiment
 
-![News sentiment](docs/images/manual/05-sentiment.png)
+![News sentiment](assets/manual/05-sentiment.png)
 
 - Each **bar is one week** of news about the company.
   - Bars **above** the middle line mean the news was mostly positive.
@@ -94,7 +94,7 @@ before.
 
 **Trying the sentiment model yourself** (on the overview page):
 
-![Try the sentiment model](docs/images/manual/06-analyse.png)
+![Try the sentiment model](assets/manual/06-analyse.png)
 
 1. Paste one or more headlines, one per line.
 2. Press **Analyse** (or **Ctrl+Enter**).
@@ -103,7 +103,7 @@ before.
 
 ## 5. The optimised portfolio
 
-![Portfolio](docs/images/manual/07-portfolio.png)
+![Portfolio](assets/manual/07-portfolio.png)
 
 The pie chart shows how a sum of money could be split across the ten stocks to get the best
 balance of return and risk over the **last 30 trading days**. It is recalculated once a day.
@@ -129,7 +129,7 @@ Often the equal split did better, which is a well-known result.
 | Forecast says "saved copy" | The forecasting model is restarting or down | The saved forecast is from an earlier run; it updates automatically when the model is back. |
 | Prices look a day old | Prices are end-of-day and are updated each weekday morning (06:30 India time) | Nothing; this is normal. On a weekend or holiday the last trading day is shown. |
 
-![Status panel](docs/images/manual/08-status.png)
+![Status panel](assets/manual/08-status.png)
 
 ## 7. Starting and stopping FinSight (for whoever installed it)
 
@@ -147,7 +147,7 @@ wakes.
 
 ## 8. The Pipeline page (for operators)
 
-![Pipeline Console](docs/images/manual/09-pipeline.png)
+![Pipeline Console](assets/manual/09-pipeline.png)
 
 The **Pipeline** link at the top opens the console that shows how FinSight keeps itself up to date.
 
@@ -159,7 +159,7 @@ The **Pipeline** link at the top opens the console that shows how FinSight keeps
 | **Run duration, Throughput** | Whether runs are getting slower over time. Every chart has a table view. |
 | **Monitoring** | Alerts firing now, and whether the recent data still looks like the data the model learned from. If many stocks change behaviour, or the model becomes clearly worse than a simple "price stays the same" guess, FinSight retrains itself (at most once a day). The **Grafana** link opens the same numbers as charts over time. |
 
-![Monitoring](docs/images/manual/10-monitoring.png)
+![Monitoring](assets/manual/10-monitoring.png)
 
 ## 9. Accessibility and devices
 

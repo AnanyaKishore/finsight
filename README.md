@@ -16,7 +16,7 @@ retraining. Everything runs on one laptop with Docker Compose. No cloud service 
 
 > **Analytical insight only. FinSight does not give investment advice.**
 
-![FinSight architecture](./docs/diagrams/architecture.png)
+![FinSight architecture](./diagrams/architecture.png)
 _System architecture: the 15 Docker Compose services and how they interact_
 
 ## Repository Structure
@@ -43,7 +43,7 @@ finsight/
 ├── tests/                   # unit, integration and end-to-end tests
 ├── notebooks/               # exploratory data analysis
 ├── scripts/                 # preflight check, test report, load test, builders
-├── docs/                    # design documents, test plan, user manual
+├── diagrams/ api/ assets/  # architecture diagrams, OpenAPI spec, manual screenshots
 ├── configs/tickers.yaml     # the fixed 10-stock universe
 ├── params.yaml              # every tunable value (tracked by DVC)
 ├── dvc.yaml                 # the CI pipeline DAG
@@ -65,7 +65,7 @@ end-of-day prices (MarketStack, with yfinance as fallback) and company news (Fin
 into MongoDB, exports a snapshot, validates it with 21 data-quality checks, and processes
 it with Apache Spark.
 
-![DVC pipeline](./docs/diagrams/dvc_dag.png)
+![DVC pipeline](./diagrams/dvc_dag.png)
 _The DVC pipeline: tests and data checks gate every stage that follows_
 
 ### Model Training and Registry
@@ -95,7 +95,7 @@ on five dashboards. Alert rules watch data drift and the live forecast error. Wh
 fires, Alertmanager asks the scheduler to retrain, and the promotion gate decides whether
 the new model is used.
 
-![Drift, retrain, promote](./docs/diagrams/retrain_loop.png)
+![Drift, retrain, promote](./diagrams/retrain_loop.png)
 _Monitoring closes the loop: drift or error alert, retrain, promote only if better_
 
 ## Documentation
@@ -104,11 +104,11 @@ _Monitoring closes the loop: drift or error alert, retrain, promote only if bett
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Architecture diagram and every block explained |
 | [HLD.md](HLD.md) | High-level design: goals, flows, design choices |
-| [LLD.md](LLD.md) and [openapi.json](docs/api/openapi.json) | Endpoint input/output specifications, data stores, error codes |
-| [DATA_CARD.md](docs/DATA_CARD.md) | Data sources, formats, lineage, known biases |
+| [LLD.md](LLD.md) and [openapi.json](api/openapi.json) | Endpoint input/output specifications, data stores, error codes |
+| [DATA_CARD.md](DATA_CARD.md) | Data sources, formats, lineage, known biases |
 | [TEST_PLAN.md](TEST_PLAN.md), [TEST_CASES.md](TEST_CASES.md), [TEST_REPORT.md](TEST_REPORT.md) | Test plan, acceptance criteria, latest results |
 | [USER_MANUAL.md](USER_MANUAL.md) | How to use the portal (non-technical) |
-| [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) | Retraining from a commit gives identical metrics |
+| [REPRODUCIBILITY.md](REPRODUCIBILITY.md) | Retraining from a commit gives identical metrics |
 
 ## Getting Started
 
@@ -163,7 +163,7 @@ Every port is bound to `127.0.0.1` only.
 make test           # unit tests, no services needed
 make test-int       # integration tests against MongoDB
 make e2e            # end-to-end smoke tests against the running stack
-make test-report    # every suite -> docs/TEST_REPORT.md
+make test-report    # every suite -> TEST_REPORT.md
 ```
 
 `make help` lists every other shortcut.

@@ -457,7 +457,7 @@ def write_reports(
         lines.append(
             f"| `{file}` | {sum(c.values())} | {c['passed']} | {c['failed'] + c['error']} | {c['skipped']} |"
         )
-    notes = ROOT / "docs" / "TEST_NOTES.md"
+    notes = ROOT / "TEST_NOTES.md"
     if notes.exists():  # hand-written context for a result (kept across regenerations)
         body = [
             ln for ln in notes.read_text(encoding="utf-8").splitlines() if not ln.startswith("# ")
@@ -466,7 +466,7 @@ def write_reports(
             "",
             "## 5. Notes",
             "",
-            "From [TEST_NOTES.md](docs/TEST_NOTES.md), written by hand.",
+            "From [TEST_NOTES.md](TEST_NOTES.md), written by hand.",
             *body,
         ]
     (ROOT / "TEST_REPORT.md").write_text(

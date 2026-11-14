@@ -51,7 +51,7 @@ investment advice.
 
 ## 3. System context and logical layers
 
-![Logical layers](docs/diagrams/hld_layers.png)
+![Logical layers](diagrams/hld_layers.png)
 
 | Layer | Contents | Talks to |
 |---|---|---|
@@ -89,10 +89,10 @@ behind the ingestion service.
    - Otherwise nothing changes.
 4. **Reproduction.** `git checkout <commit>`, then `dvc pull`, then
    `mlflow run . -e train_lstm` gives the same metrics
-   (`scripts/repro_drill.py`, [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md)).
+   (`scripts/repro_drill.py`, [REPRODUCIBILITY.md](REPRODUCIBILITY.md)).
 
-Sequence diagrams: [daily run](docs/diagrams/daily_run.png), [retrain loop](docs/diagrams/retrain_loop.png).
-CI DAG: [dvc_dag.png](docs/diagrams/dvc_dag.png).
+Sequence diagrams: [daily run](diagrams/daily_run.png), [retrain loop](diagrams/retrain_loop.png).
+CI DAG: [dvc_dag.png](diagrams/dvc_dag.png).
 
 ## 5. Design choices and rationale
 
@@ -135,7 +135,7 @@ CI DAG: [dvc_dag.png](docs/diagrams/dvc_dag.png).
   - Every row records its `source` (lineage).
 - **Quality:** 21 expectations run before Spark, with severities `error` (stops the
   pipeline) and `warn`. A real-data example: zero prices from MarketStack were caught and
-  repaired. See [DATA_CARD.md](docs/DATA_CARD.md).
+  repaired. See [DATA_CARD.md](DATA_CARD.md).
 - **Versioning:**
   - MongoDB is exported to Parquet by the `export` stage, and the DVC hash of that output
     pins exactly which data trained which model;

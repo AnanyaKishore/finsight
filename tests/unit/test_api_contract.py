@@ -1,4 +1,4 @@
-"""The published API contract (docs/api/openapi.json, LLD §2) matches the running code."""
+"""The published API contract (api/openapi.json, LLD §2) matches the running code."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_committed_openapi_matches_the_code():
     """If this fails, run `python scripts/export_openapi.py` and update LLD §2."""
-    committed = json.loads((ROOT / "docs" / "api" / "openapi.json").read_text(encoding="utf-8"))
+    committed = json.loads((ROOT / "api" / "openapi.json").read_text(encoding="utf-8"))
     generated = json.loads(json.dumps(create_app().openapi(), sort_keys=True))
     assert generated == committed
 

@@ -14,7 +14,8 @@ reports/
 dvc_plots/
 notebooks/
 images/
-docs/
+diagrams/
+assets/
 **/__pycache__/
 **/*.pyc
 .pytest_cache/

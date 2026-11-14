@@ -17,7 +17,7 @@ What it does, in a fresh clone so your working copy is never touched:
 5. ``python -m finsight.models.lstm.evaluate`` scores it on the same held-out
    test windows.
 6. Compares the new validation and test metrics with the ones committed at that
-   commit and writes ``docs/REPRODUCIBILITY.md`` (in your working copy) with
+   commit and writes ``REPRODUCIBILITY.md`` (in your working copy) with
    the commit hash, both MLflow run IDs, the table and the verdict.
 
 The clone runs its *own* code (``PYTHONPATH=<clone>/src``), not the copy
@@ -165,7 +165,7 @@ def write_markdown(info: dict[str, Any], rows: list[dict], verdict: str) -> Path
         "(the commit), same package versions (`environment.yml` → `requirements/*.txt`, also used by "
         "the Docker images).",
     ]
-    out = ROOT / "docs" / "REPRODUCIBILITY.md"
+    out = ROOT / "REPRODUCIBILITY.md"
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return out
 

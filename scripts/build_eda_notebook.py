@@ -28,7 +28,7 @@ md("""
 
 **Purpose (guidelines §II.A):** understand the data before modelling — coverage,
 distributions, patterns, missing values and outliers — and record the findings
-in `docs/DATA_CARD.md`.
+in `DATA_CARD.md`.
 
 **Input:** the DVC-versioned snapshot `data/raw/{prices,news}.parquet` produced by the
 `export` stage, plus `reports/data_quality.json` from `validate`. Run `dvc repro` first.
@@ -197,7 +197,7 @@ print("Share with a summary:", round((news["summary"].fillna("").str.strip() != 
 md("""
 ## 9. Findings summary
 
-The cell below prints the numbers to copy into `docs/DATA_CARD.md` (section *Observed
+The cell below prints the numbers to copy into `DATA_CARD.md` (section *Observed
 characteristics*).
 """)
 code("""

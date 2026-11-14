@@ -13,7 +13,7 @@
 #      (reported only: decide yourself, e.g. move them to DVC or LFS).
 #   4. Stray files at the repository root that no tool reads (reported only).
 #
-# Never touched, whatever .gitignore says: docs/, tests/, dvc.yaml, dvc.lock,
+# Never touched, whatever .gitignore says: the root .md files, diagrams/, api/, assets/, tests/, dvc.yaml, dvc.lock,
 # *.dvc, .dvc/config, params.yaml, secrets/.env.enc, reports/*.json, .gitkeep files.
 set -euo pipefail
 
@@ -22,7 +22,7 @@ APPLY=0
 
 cd "$(git rev-parse --show-toplevel)"
 
-PROTECTED='^(docs/|tests/|dvc\.yaml$|dvc\.lock$|.*\.dvc$|\.dvc/config$|params\.yaml$|secrets/\.env\.enc$|reports/[^/]+\.json$|.*\.gitkeep$)'
+PROTECTED='^([A-Z_]+\.md$|diagrams/|api/|assets/|tests/|dvc\.yaml$|dvc\.lock$|.*\.dvc$|\.dvc/config$|params\.yaml$|secrets/\.env\.enc$|reports/[^/]+\.json$|.*\.gitkeep$)'
 
 say() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 

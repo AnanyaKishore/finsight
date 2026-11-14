@@ -181,7 +181,7 @@ groups:
         labels: {severity: warning}
         annotations:
           summary: "Root filesystem has {{ $value | humanizePercentage }} free"
-          description: "See docs/RUNBOOK.md 'Freeing disk space' (docker builder prune, dvc gc -w)."
+          description: "Free space: docker builder prune -af, dvc gc -w -f."
 
       - alert: ContainerNearMemoryLimit
         expr: |

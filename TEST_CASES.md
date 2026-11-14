@@ -25,7 +25,7 @@ Every automated test case, grouped by suite and area. IDs are assigned in file o
 | UT-013 | Model client retries transient errors only | passed |
 | UT-014 | Model client accepts column oriented predictions | passed |
 
-### `tests/unit/test_api_contract.py` — The published API contract (docs/api/openapi.json, LLD §2) matches the running code.
+### `tests/unit/test_api_contract.py` — The published API contract (api/openapi.json, LLD §2) matches the running code.
 
 | ID | Test case | Result |
 |---|---|---|
