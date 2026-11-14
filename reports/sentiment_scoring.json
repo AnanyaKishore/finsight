@@ -1,15 +1,15 @@
 {
   "model_version": "0bc2ac10dda6-band0.7484-len256",
-  "articles": 16108,
-  "scored_this_run": 85,
-  "reused_from_cache": 16023,
-  "scoring_seconds": 12.12,
-  "throughput_articles_per_s": 7.0,
+  "articles": 16118,
+  "scored_this_run": 10,
+  "reused_from_cache": 16108,
+  "scoring_seconds": 1.31,
+  "throughput_articles_per_s": 7.6,
   "weeks": 295,
-  "mean_score": 0.0444,
-  "share_positive": 0.1948,
+  "mean_score": 0.0445,
+  "share_positive": 0.1949,
   "share_negative": 0.1853,
-  "share_neutral": 0.6199,
+  "share_neutral": 0.6197,
   "production_version": "2",
   "candidate": "finbert"
 }
