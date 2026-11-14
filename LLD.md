@@ -1,7 +1,7 @@
 # FinSight — Low-Level Design (LLD)
 
 Covers the backend API (§2–§4), data stores (§5), observability (§6), degradation (§7), the portal (§8), security (§8b) and code structure (§9). Architecture: [ARCHITECTURE.md](ARCHITECTURE.md); design rationale: [HLD.md](HLD.md).
-The machine-readable API contract is [`docs/api/openapi.json`](api/openapi.json)
+The machine-readable API contract is [`docs/api/openapi.json`](docs/api/openapi.json)
 (regenerate with `python scripts/export_openapi.py`); interactive docs run at
 `http://localhost:8000/docs`.
 

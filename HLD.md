@@ -3,7 +3,7 @@
 This document explains **what** FinSight does, **how it is put together**, and **why** each
 major choice was made. Block-by-block detail is in [ARCHITECTURE.md](ARCHITECTURE.md), the
 interface contract in [LLD.md](LLD.md), and every smaller decision (with the evidence that
-led to it) in [DESIGN_DECISIONS.md](DESIGN_DECISIONS.md).
+led to it) in [DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md).
 
 ---
 
@@ -52,7 +52,7 @@ investment advice.
 
 ## 3. System context and logical layers
 
-![Logical layers](diagrams/hld_layers.png)
+![Logical layers](docs/diagrams/hld_layers.png)
 
 | Layer | Contents | Talks to |
 |---|---|---|
@@ -90,10 +90,10 @@ behind the ingestion service.
    - Otherwise nothing changes.
 4. **Reproduction.** `git checkout <commit>`, then `dvc pull`, then
    `mlflow run . -e train_lstm` gives the same metrics
-   (`scripts/repro_drill.py`, [REPRODUCIBILITY.md](REPRODUCIBILITY.md)).
+   (`scripts/repro_drill.py`, [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md)).
 
-Sequence diagrams: [daily run](diagrams/daily_run.png), [retrain loop](diagrams/retrain_loop.png).
-CI DAG: [dvc_dag.png](diagrams/dvc_dag.png).
+Sequence diagrams: [daily run](docs/diagrams/daily_run.png), [retrain loop](docs/diagrams/retrain_loop.png).
+CI DAG: [dvc_dag.png](docs/diagrams/dvc_dag.png).
 
 ## 5. Design choices and rationale
 
@@ -136,7 +136,7 @@ CI DAG: [dvc_dag.png](diagrams/dvc_dag.png).
   - Every row records its `source` (lineage).
 - **Quality:** 21 expectations run before Spark, with severities `error` (stops the
   pipeline) and `warn`. A real-data example: zero prices from MarketStack were caught and
-  repaired. See [DATA_CARD.md](DATA_CARD.md).
+  repaired. See [DATA_CARD.md](docs/DATA_CARD.md).
 - **Versioning:**
   - MongoDB is exported to Parquet by the `export` stage, and the DVC hash of that output
     pins exactly which data trained which model;
@@ -159,7 +159,7 @@ CI DAG: [dvc_dag.png](diagrams/dvc_dag.png).
 | Quality | Design response | Evidence |
 |---|---|---|
 | **Performance** | Forecasts computed once per stock per day and cached; reads are indexed MongoDB queries; static frontend | p95 17 ms at 10 users (AC-08) |
-| **Scalability** | Spark ETL scales with data volume (benchmarked at 1×/10×/50×); stateless backend can run more replicas; model servers are separate and can scale independently | `reports/etl_benchmark.json`; [DESIGN_DECISIONS](DESIGN_DECISIONS.md) Day 2 |
+| **Scalability** | Spark ETL scales with data volume (benchmarked at 1×/10×/50×); stateless backend can run more replicas; model servers are separate and can scale independently | `reports/etl_benchmark.json`; [DESIGN_DECISIONS](docs/DESIGN_DECISIONS.md) Day 2 |
 | **Reliability** | Retries with back-off and jitter; idempotent writes; per-step timeouts; partial runs; graceful degradation (stale forecast, then 503); catch-up after sleep; health checks and restart policies | e2e and unit tests; AC-11 |
 | **Security** | See LLD §8b: localhost-only ports, authenticated MongoDB, non-root containers, tokens on control endpoints, CORS, CSP, encrypted secrets and backups | `tests/unit/test_security.py`, AC-01 |
 | **Observability** | JSON logs with request/run IDs; Prometheus metrics from every component; alert rules; dashboards | Grafana, Prometheus targets (e2e) |

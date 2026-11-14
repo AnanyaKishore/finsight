@@ -11,7 +11,7 @@ runs DistilBERT/FinBERT on the CPU, so it is measured separately with a few
 sequential calls and judged against its own 2 s target.
 
 Writes ``reports/load_test.json`` (read by ``scripts/test_report.py``) and
-prints a table. Acceptance (docs/TEST_PLAN.md): p95 < 300 ms on cached
+prints a table. Acceptance (TEST_PLAN.md): p95 < 300 ms on cached
 endpoints, error rate < 1 %, p95 < 2 s on the live model endpoint. Only the
 standard library and ``requests`` are needed; no Locust/JMeter install.
 """

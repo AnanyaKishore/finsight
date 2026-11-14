@@ -1,7 +1,5 @@
 # FinSight: an AIOps-driven stock analysis platform
 
-**Author:** Ananya Kishore
-
 ## Overview
 
 FinSight is a self-hosted web application for financial analysis of ten large-cap US stocks
@@ -104,13 +102,12 @@ _Monitoring closes the loop: drift or error alert, retrain, promote only if bett
 
 | Document | What it covers |
 |---|---|
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Architecture diagram and every block explained |
-| [HLD.md](docs/HLD.md) | High-level design: goals, flows, design choices |
-| [LLD.md](docs/LLD.md) and [openapi.json](docs/api/openapi.json) | Endpoint input/output specifications, data stores, error codes |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Architecture diagram and every block explained |
+| [HLD.md](HLD.md) | High-level design: goals, flows, design choices |
+| [LLD.md](LLD.md) and [openapi.json](docs/api/openapi.json) | Endpoint input/output specifications, data stores, error codes |
 | [DATA_CARD.md](docs/DATA_CARD.md) | Data sources, formats, lineage, known biases |
-| [TEST_PLAN.md](docs/TEST_PLAN.md), [TEST_CASES.md](docs/TEST_CASES.md), [TEST_REPORT.md](docs/TEST_REPORT.md) | Test plan, acceptance criteria, latest results |
-| [USER_MANUAL.md](docs/USER_MANUAL.md) | How to use the portal (non-technical) |
-| [RUNBOOK.md](docs/RUNBOOK.md) | Full setup on a new machine, and day-to-day operations |
+| [TEST_PLAN.md](TEST_PLAN.md), [TEST_CASES.md](TEST_CASES.md), [TEST_REPORT.md](TEST_REPORT.md) | Test plan, acceptance criteria, latest results |
+| [USER_MANUAL.md](USER_MANUAL.md) | How to use the portal (non-technical) |
 | [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) | Retraining from a commit gives identical metrics |
 | [DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md) | Every deviation from the proposal, with its reason |
 | [PROJECT_PLAN.md](docs/PROJECT_PLAN.md) | Plan, memory budget and risks |
@@ -148,9 +145,6 @@ _Monitoring closes the loop: drift or error alert, retrain, promote only if bett
    docker compose up -d          # about a minute
    make preflight                # checks that everything is up
    ```
-
-A first-time setup on an empty machine (backfilling data, training the first models) is
-described step by step in [RUNBOOK.md](docs/RUNBOOK.md).
 
 ### Where to find everything
 

@@ -8,10 +8,10 @@ this script reads ``reports/load_test.json`` rather than loading the API itself.
 
 Outputs:
 
-* ``docs/TEST_REPORT.md``  totals (passed / failed / skipped per suite),
-  coverage, the acceptance criteria of ``docs/TEST_PLAN.md`` with the measured
+* ``TEST_REPORT.md``  totals (passed / failed / skipped per suite),
+  coverage, the acceptance criteria of ``TEST_PLAN.md`` with the measured
   value and PASS / FAIL, and every failed test.
-* ``docs/TEST_CASES.md``   every test case with an ID, what it checks and its
+* ``TEST_CASES.md``   every test case with an ID, what it checks and its
   result in this run (the "enlistment of test cases").
 
 Test descriptions come from each test's docstring or, failing that, its name
@@ -195,7 +195,7 @@ def criterion(cid: str, what: str, target: str, value: Any, ok: bool | None) -> 
 
 
 def acceptance(counts: dict[str, Counter], api: str, rules: dict[str, Any]) -> list[dict[str, Any]]:
-    """Evaluate AC-01 ... AC-12 of docs/TEST_PLAN.md."""
+    """Evaluate AC-01 ... AC-12 of TEST_PLAN.md."""
     out = []
     for cid, suite, what in (
         ("AC-01", "unit", "Unit tests"),
@@ -466,10 +466,10 @@ def write_reports(
             "",
             "## 5. Notes",
             "",
-            "From [TEST_NOTES.md](TEST_NOTES.md), written by hand.",
+            "From [TEST_NOTES.md](docs/TEST_NOTES.md), written by hand.",
             *body,
         ]
-    (ROOT / "docs" / "TEST_REPORT.md").write_text(
+    (ROOT / "TEST_REPORT.md").write_text(
         "\n".join(lines).rstrip() + "\n", encoding="utf-8"
     )
 
@@ -499,7 +499,7 @@ def write_reports(
         cat.append(f"| {c['id']} | {c['what']}{params} | {c['outcome']} |")
         if i + 1 == len(cases) or cases[i + 1]["file"] != current_file:
             cat.append("")  # a blank line closes the table
-    (ROOT / "docs" / "TEST_CASES.md").write_text("\n".join(cat).rstrip() + "\n", encoding="utf-8")
+    (ROOT / "TEST_CASES.md").write_text("\n".join(cat).rstrip() + "\n", encoding="utf-8")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -548,7 +548,7 @@ def main(argv: list[str] | None = None) -> int:
     print("\n=== acceptance criteria ===")
     for c in criteria:
         print(f"{c['result']:8} {c['id']}  {c['what']}: {c['value']}")
-    print("\nwrote docs/TEST_REPORT.md and docs/TEST_CASES.md")
+    print("\nwrote TEST_REPORT.md and TEST_CASES.md")
     return 0 if all(c["result"] == "PASS" for c in criteria) else 1
 
 

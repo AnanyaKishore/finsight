@@ -75,7 +75,7 @@ None.
 
 ## 5. Notes
 
-From [TEST_NOTES.md](TEST_NOTES.md), written by hand.
+From [TEST_NOTES.md](docs/TEST_NOTES.md), written by hand.
 
 Hand-written context for results in the generated test report. `scripts/test_report.py`
 copies this file into section 5 of `TEST_REPORT.md`; the measured values above are never edited.

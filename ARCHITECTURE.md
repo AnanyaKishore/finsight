@@ -11,15 +11,15 @@ Related documents: [HLD.md](HLD.md) (design choices and rationale) · [LLD.md](L
 
 ## 1. Architecture diagram
 
-![FinSight architecture](diagrams/architecture.png)
+![FinSight architecture](docs/diagrams/architecture.png)
 
-*Source: [`diagrams/architecture.mmd`](diagrams/architecture.mmd) (Mermaid; also
-[`architecture.svg`](diagrams/architecture.svg)). The numbers on the arrows match the
+*Source: [`diagrams/architecture.mmd`](docs/diagrams/architecture.mmd) (Mermaid; also
+[`architecture.svg`](docs/diagrams/architecture.svg)). The numbers on the arrows match the
 interactions in §3.*
 
 ## 2. The blocks
 
-Fifteen services in [`docker-compose.yml`](../docker-compose.yml), in six groups. Five images
+Fifteen services in [`docker-compose.yml`](docker-compose.yml), in six groups. Five images
 are built from this repository (`docker/Dockerfile.*`); the rest are pinned upstream images.
 
 ### Presentation
@@ -50,7 +50,7 @@ deployment step is needed.
 | Block | What it is | Responsibility |
 |---|---|---|
 | **scheduler** `:8001` | Python service (`src/finsight/scheduler`) in the pipeline image, with the repository mounted at `/app` | Runs the **daily run** (06:30 IST, Tue–Sat, catch-up after sleep): ingest, then `dvc repro`, then refresh the forecasts, monitor, `dvc push` and a local commit. It also runs **retrains** from the console or the Alertmanager webhook (`/retrain`, with a 24 h cooldown and a queue), and computes the **monitoring report** every 2 minutes (drift, live error, freshness, data quality). Records every run and step in MongoDB. |
-| **DVC pipeline** | `dvc.yaml`, executed by the scheduler (or by you with `dvc repro`) | The CI DAG: `unit_tests` → `export` → `validate` → `process` (Spark) → `train_lstm` → `evaluate_lstm` → `register` (promotion gate); also `fetch/evaluate_sentiment@candidate`, `score_sentiment` and `optimize_portfolio`. See [`diagrams/dvc_dag.png`](diagrams/dvc_dag.png). |
+| **DVC pipeline** | `dvc.yaml`, executed by the scheduler (or by you with `dvc repro`) | The CI DAG: `unit_tests` → `export` → `validate` → `process` (Spark) → `train_lstm` → `evaluate_lstm` → `register` (promotion gate); also `fetch/evaluate_sentiment@candidate`, `score_sentiment` and `optimize_portfolio`. See [`diagrams/dvc_dag.png`](docs/diagrams/dvc_dag.png). |
 | **mlflow** `:5000` | MLflow tracking server + model registry (SQLite backend, artifacts on a volume) | Every training run with its parameters, metrics, lineage tags (Git commit, DVC data hash), plots and the packaged model; registered versions with `@production` / `@staging` aliases. |
 | **ingestion** | One-off job (Compose profile `jobs`), same image as the scheduler | Manual backfill / incremental load from MarketStack (yfinance fallback) and Finnhub. |
 
@@ -95,11 +95,11 @@ The two most important flows:
 
 **Daily run** (automation, CI and continuous delivery of data):
 
-![Daily run](diagrams/daily_run.png)
+![Daily run](docs/diagrams/daily_run.png)
 
 **Drift → retrain → promote** (monitoring closing the loop):
 
-![Retrain loop](diagrams/retrain_loop.png)
+![Retrain loop](docs/diagrams/retrain_loop.png)
 
 ## 4. Loose coupling between the UI and the model inference
 

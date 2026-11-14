@@ -19,7 +19,7 @@ def test_committed_openapi_matches_the_code():
 
 
 def test_every_endpoint_is_documented_in_the_lld():
-    lld = (ROOT / "docs" / "LLD.md").read_text(encoding="utf-8")
+    lld = (ROOT / "LLD.md").read_text(encoding="utf-8")
     for path in create_app().openapi()["paths"]:
         stem = re.sub(r"/\{[^}]+\}.*$", "", path)
-        assert stem in lld, f"{path} is missing from docs/LLD.md"
+        assert stem in lld, f"{path} is missing from LLD.md"

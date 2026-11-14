@@ -127,7 +127,7 @@ e2e:             ## end-to-end smoke tests against the running stack (docker com
 load-test:       ## 10 users for 60 s against the API -> reports/load_test.json
 	python scripts/load_test.py
 
-test-report:     ## run every suite -> docs/TEST_REPORT.md + docs/TEST_CASES.md
+test-report:     ## run every suite -> TEST_REPORT.md + TEST_CASES.md
 	python scripts/test_report.py
 
 secrets-key:     ## create the encryption key (once; ~/.config/finsight/secret.key, never overwritten)
