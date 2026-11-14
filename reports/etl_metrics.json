@@ -1,12 +1,12 @@
 {
   "inputs": {
-    "news_rows": 16068,
+    "news_rows": 16231,
     "price_rows": 2662,
     "replicate": 1
   },
   "outputs": {
     "files": 21,
-    "news_rows": 15861,
+    "news_rows": 16023,
     "news_weekly_rows": 295,
     "price_rows": 2690,
     "tickers": 10
@@ -14,7 +14,7 @@
   "quality": {
     "news_removed": {
       "blank_headlines": 0,
-      "duplicate_headlines": 207,
+      "duplicate_headlines": 208,
       "duplicate_ids": 0
     },
     "price_rows_dropped": 0,
@@ -24,49 +24,49 @@
     "driver_memory": "1g",
     "master": "local[4]",
     "shuffle_partitions": 8,
-    "startup_seconds": 3.67,
+    "startup_seconds": 5.561,
     "version": "4.2.0"
   },
   "steps": [
     {
-      "rows_in": 18730,
-      "rows_out": 18730,
-      "rows_per_s": 6796.1,
-      "seconds": 2.756,
+      "rows_in": 18893,
+      "rows_out": 18893,
+      "rows_per_s": 4871.8,
+      "seconds": 3.878,
       "step": "read_snapshot"
     },
     {
       "rows_in": 2662,
       "rows_out": 2690,
-      "rows_per_s": 874.8,
-      "seconds": 3.043,
+      "rows_per_s": 557.8,
+      "seconds": 4.772,
       "step": "align_calendar"
     },
     {
       "rows_in": 2690,
       "rows_out": 2690,
-      "rows_per_s": 4453.6,
-      "seconds": 0.604,
+      "rows_per_s": 2642.4,
+      "seconds": 1.018,
       "step": "engineer_features"
     },
     {
-      "rows_in": 16068,
-      "rows_out": 16156,
-      "rows_per_s": 6137.5,
-      "seconds": 2.618,
+      "rows_in": 16231,
+      "rows_out": 16318,
+      "rows_per_s": 4115.4,
+      "seconds": 3.944,
       "step": "clean_aggregate_news"
     },
     {
-      "rows_in": 18846,
-      "rows_out": 18846,
-      "rows_per_s": 12285.5,
-      "seconds": 1.534,
+      "rows_in": 19008,
+      "rows_out": 19008,
+      "rows_per_s": 11220.8,
+      "seconds": 1.694,
       "step": "write_parquet"
     }
   ],
   "totals": {
-    "processing_seconds": 10.555,
-    "rows_in": 18730,
-    "rows_per_s": 1774.5
+    "processing_seconds": 15.306,
+    "rows_in": 18893,
+    "rows_per_s": 1234.4
   }
 }
