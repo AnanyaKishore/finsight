@@ -19,6 +19,8 @@ retraining. Everything runs on one laptop with Docker Compose. No cloud service 
 ![FinSight architecture](./diagrams/architecture.png)
 _System architecture: the 15 Docker Compose services and how they interact_
 
+Video link: https://drive.google.com/file/d/1cZWdzFojOQHmLBmewD8XODsYhXxpDJi0/view?usp=drive_link
+
 ## Repository Structure
 
 ```
