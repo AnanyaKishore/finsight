@@ -76,26 +76,22 @@ None.
 
 ## 5. Notes
 
-From [TEST_NOTES.md](TEST_NOTES.md), written by hand.
+Written by hand.
 
-Hand-written context for results in the generated test report. `scripts/test_report.py`
-copies this file into section 5 of `TEST_REPORT.md`; the measured values above are never edited.
+Context for results in the generated test report. The measured values above are never edited.
 
-### AC-11 — scheduled pipeline runs
+### AC-11: scheduled pipeline runs
 
-The only failed scheduled run is `5ec75aa8d7f1`, the scheduler's first run, on
-27 Oct 2026 at 13:21 UTC (Day 7, while the scheduler was being set up).
+AC-11 passes at 10 of 11 scheduled runs (91 %) against a 90 % target.
 
-- **What failed:** the `data` step's unit-test gate (`finsight.ci.run_unit_tests`).
-  One test, `test_runs.py::test_stage_run_carries_the_scheduler_run_id`, failed:
-  the scheduler sets `FINSIGHT_PIPELINE_RUN_ID` for every command it runs, and the
-  test read that variable instead of assuming it was unset. This was a test-isolation
-  bug, not a pipeline fault. The gate worked as designed and stopped the run before
-  any data changed; later steps were skipped.
-- **Fix:** the same afternoon, in the Day 7 test-isolation fix: the test now clears
-  the variable before checking it.
-- **Since then:** every scheduled run has succeeded (4 of 4 at the time of writing).
+The only failed scheduled run is `5ec75aa8d7f1`, the scheduler's first run, on 27 Oct 2026.
 
-The 90 % target is unchanged. With so few runs one failure weighs 20 %, so the
-criterion passes once at least 9 of 10 scheduled runs in the 30-day window succeed
-(five more successful daily runs), or when this run leaves the window on 26 Nov.
+- **What failed:** the unit-test gate of the `data` step. The test
+  `test_runs.py::test_stage_run_carries_the_scheduler_run_id` read `FINSIGHT_PIPELINE_RUN_ID`,
+  which the scheduler sets for every command it runs. This was a test-isolation bug, not a
+  pipeline fault. The gate stopped the run before any data changed, and later steps were skipped.
+- **Fix:** the test now clears the variable before checking it. Fixed the same day.
+- **Since then:** every scheduled run has succeeded.
+
+The target was not lowered to fit the result. With only five runs in an earlier report, this one
+failure put AC-11 at 80 %. It passed once enough daily runs had succeeded.
