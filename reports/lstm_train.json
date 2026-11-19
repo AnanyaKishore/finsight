@@ -1,11 +1,11 @@
 {
-  "run_id": "058edd597ce7440182a9667dc9a94d41",
-  "selected": "h32-l1-lr0.003",
-  "val_mape": 2.9571,
-  "val_naive_mape": 3.0994,
-  "val_skill_vs_naive": 0.0459,
-  "best_epoch": 3,
+  "run_id": "444499d8a20e4096a6d54dc29af0b6d0",
+  "selected": "h64-l1-lr0.003",
+  "val_mape": 2.9852,
+  "val_naive_mape": 3.0513,
+  "val_skill_vs_naive": 0.0217,
+  "best_epoch": 39,
   "n_configs": 8,
-  "n_train": 880,
+  "n_train": 1010,
   "n_val": 150
 }

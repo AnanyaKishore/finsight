@@ -1,5 +1,5 @@
 {
-  "run_id": "13be9d4d90b24fdc95679f63230b1c14",
+  "run_id": "fe097576ecdd4e38b1c66cc78e190019",
   "candidate": "distilbert_sst2",
   "gate_dataset": "twitter_financial_news",
   "n_test": 1189,
@@ -15,7 +15,7 @@
   "financial_phrasebank_macro_f1": 0.54,
   "financial_phrasebank_binary_accuracy": 0.6812,
   "financial_phrasebank_contaminated": false,
-  "latency_p50_ms": 27.02,
-  "latency_p95_ms": 36.34,
-  "throughput_texts_per_s": 45.6
+  "latency_p50_ms": 21.7,
+  "latency_p95_ms": 27.93,
+  "throughput_texts_per_s": 42.5
 }

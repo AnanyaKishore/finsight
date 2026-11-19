@@ -1,5 +1,5 @@
 {
-  "run_id": "6d27124b2c414c2d92f7d71b24918a91",
+  "run_id": "35f2b984c4c34f90b17c3774e6d372fb",
   "candidate": "finbert",
   "gate_dataset": "twitter_financial_news",
   "n_test": 1189,
@@ -15,7 +15,7 @@
   "financial_phrasebank_macro_f1": 0.9672,
   "financial_phrasebank_binary_accuracy": 0.9862,
   "financial_phrasebank_contaminated": true,
-  "latency_p50_ms": 43.33,
-  "latency_p95_ms": 51.57,
-  "throughput_texts_per_s": 22.3
+  "latency_p50_ms": 53.17,
+  "latency_p95_ms": 65.44,
+  "throughput_texts_per_s": 21.8
 }

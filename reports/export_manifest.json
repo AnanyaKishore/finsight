@@ -5,8 +5,8 @@
       "2026-11-19"
     ],
     "path": "data/raw/news.parquet",
-    "rows": 17348,
-    "sha256": "3f2b5d5a870b7fc1d024dc5b5ceb1207a725905489038958cd905e5f827627fb",
+    "rows": 17537,
+    "sha256": "2794b73f7d93a064156903ca27f2c595475f6817ffe0f6c1e2679bf642382239",
     "tickers": 10
   },
   "prices": {
